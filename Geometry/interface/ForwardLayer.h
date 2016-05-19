@@ -1,7 +1,7 @@
 #ifndef FASTSIM_FORWARDLAYER_H
 #define FASTSIM_FORWARDLAYER_H
 
-#include "FastSimulation/Geometry/interface/TrackerLayer.h"
+#include "FastSimulation/Geometry/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 
@@ -9,7 +9,7 @@ class DetLayer;
 
 namespace fastsim{
 
-    class ForwardLayer  : public TrackerLayer
+    class ForwardLayer  : public Layer
     {
 		public:
 			~ForwardLayer(){};

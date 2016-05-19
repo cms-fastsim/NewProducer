@@ -1,7 +1,7 @@
 #ifndef FASTSIM_BARRELLAYER_H
 #define FASTSIM_BARRELLAYER_H
 
-#include "FastSimulation/Geometry/interface/TrackerLayer.h"
+#include "FastSimulation/Geometry/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 
@@ -9,7 +9,7 @@ class DetLayer;
 
 namespace fastsim{
 
-    class BarrelLayer : public TrackerLayer
+    class BarrelLayer : public Layer
     {
 		public:
 			~BarrelLayer(){};
