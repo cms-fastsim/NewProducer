@@ -32,17 +32,6 @@ namespace fastsim{
 			const std::vector<BarrelLayer>& barrelLayers() const { return theBarrelLayers; }
 			const std::vector<ForwardLayer>& forwardLayers() const { return theForwardLayers; }
 
-		//////////////////////////////
-		// Might not be needed any longer?!
-			/// Returns the ith pointer in the layers list
-			const BarrelLayer* getBarrelLayer(unsigned i) const { return &(theBarrelLayers.at(i)); }
-			const ForwardLayer* getForwardLayer(unsigned i) const { return &(theForwardLayers.at(i)); }
-
-			/// Returns the number of layers in the Tracker
-			const int getNbarrelLayers() const { return theBarrelLayers.size(); }
-			const int getNforwardLayers() const { return theForwardLayers.size(); }
-		//////////////////////////////
-
 		private:
 			const DetLayer* getBarrelDetLayer(std::string layerName, const GeometricSearchTracker& theGeomSearchTracker);
 			std::vector<const DetLayer*> getForwardDetLayers(std::string layerName, const GeometricSearchTracker& theGeomSearchTracker);
