@@ -15,13 +15,13 @@ namespace fastsim{
 			~ForwardLayer(){};
 
 			ForwardLayer(double z, DetLayer *posDiskDetLayer = 0, DetLayer *negDiskDetLayer = 0) :
-				TrackerLayer(),
+				Layer(),
 				z(z),
 				posDiskDetLayer(posDiskDetLayer),
 				negDiskDetLayer(negDiskDetLayer) {}
 
 			ForwardLayer(double z, std::vector<double> limits, std::vector<double> thickness, const DetLayer *posDiskDetLayer = 0, const DetLayer *negDiskDetLayer = 0) :
-				TrackerLayer(limits, thickness),
+				Layer(limits, thickness),
 				z(z),
 				posDiskDetLayer(posDiskDetLayer),
 				negDiskDetLayer(negDiskDetLayer) {}

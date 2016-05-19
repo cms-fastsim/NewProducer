@@ -15,13 +15,13 @@ namespace fastsim{
 			~BarrelLayer(){};
 
 			BarrelLayer(double radius, DetLayer *barrelDetLayer = 0) :
-				TrackerLayer(),
+				Layer(),
 				radius(radius),
 				barrelDetLayer(barrelDetLayer) {}
 
 
 			BarrelLayer(double radius, std::vector<double> limits, std::vector<double> thickness, const DetLayer *barrelDetLayer = 0) :
-				TrackerLayer(limits, thickness),
+				Layer(limits, thickness),
 				radius(radius),
 				barrelDetLayer(barrelDetLayer) {}
 
