@@ -3,6 +3,7 @@
 
 #include "FastSimulation/Geometry/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
+#include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 
 class DetLayer;
@@ -40,6 +41,12 @@ namespace fastsim{
 
 			const double minMaterialR() const { return minMaterial; }
 			const double maxMaterialR() const { return maxMaterial; }
+
+			const double getThickness(const math::XYZTLorentzVector& coord, const math::XYZTLorentzVector& mom) const {
+				GlobalVector P(mom.Px(),mom.Py(),mom.Pz());
+				GlobalVector N(0.,0.,1.);
+				return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(coord.R()))) / fabs(P.dot(N)) * P.mag();
+			}
 
     	private:
     		double z;

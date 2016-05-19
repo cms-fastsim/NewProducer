@@ -2,6 +2,7 @@
 #define FASTSIM_LAYER_H
 
 #include "FWCore/Utilities/interface/Exception.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 #include <vector>
 #include <TH1.h>
@@ -60,9 +61,9 @@ namespace fastsim{
 			virtual void setMagneticField(const MagneticField &pMF, double limit) = 0;
 
 			// Getters
-			double getThickness(double coord) const { return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(coord))); }
-			double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
-			double getMagneticFieldInTeslaZ(double coord) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(coord))); }
+			virtual const double getThickness(const math::XYZTLorentzVector& coord, const math::XYZTLorentzVector& mom) const = 0;
+			const double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
+			const double getMagneticFieldInTeslaZ(double coord) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(coord))); }
 
     	protected:
 			double nuclearInteractionThicknessFactor = 1.;
