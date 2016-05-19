@@ -79,6 +79,9 @@ Geometry::Geometry(const edm::ParameterSet& trackerMaterial, const GeometricSear
     }
 
 
+    std::vector<ForwardLayer> thePosForwardLayers;
+    std::vector<ForwardLayer> theNegForwardLayers;
+
     for(std::vector<edm::ParameterSet>::const_iterator it_forward = thePSetForwardLayers.begin(); it_forward != thePSetForwardLayers.end(); ++it_forward){
         double z = 0.;
         std::vector<double> limits, thickness;
@@ -95,12 +98,19 @@ Geometry::Geometry(const edm::ParameterSet& trackerMaterial, const GeometricSear
             z = static_cast<ForwardDetLayer const*>(detLayers.at(0))->surface().position().z();
         }
 
-        ForwardLayer flayer(z, limits, thickness, detLayers[0], detLayers[1]);
-        if(pMF) flayer.setMagneticField(*pMF, maxR);
-        if(flayer.getDetLayer()) if(flayer.getDetLayer()->subDetector() == GeomDetEnumerators::subDetGeom[GeomDetEnumerators::TEC])
-            flayer.setNuclearInteractionThicknessFactor(1.2);
+        ForwardLayer flayerPos(z, limits, thickness, detLayers[0]);
+        if(pMF) flayerPos.setMagneticField(*pMF, maxR);
+        if(flayerPos.getDetLayer()) if(flayerPos.getDetLayer()->subDetector() == GeomDetEnumerators::subDetGeom[GeomDetEnumerators::TEC])
+            flayerPos.setNuclearInteractionThicknessFactor(1.2);
 
-        theForwardLayers.push_back(flayer);        
+        thePosForwardLayers.push_back(flayerPos);
+
+        ForwardLayer flayerNeg(-z, limits, thickness, detLayers[1]);
+        if(pMF) flayerNeg.setMagneticField(*pMF, maxR);
+        if(flayerNeg.getDetLayer()) if(flayerNeg.getDetLayer()->subDetector() == GeomDetEnumerators::subDetGeom[GeomDetEnumerators::TEC])
+            flayerNeg.setNuclearInteractionThicknessFactor(1.2);
+
+        theNegForwardLayers.push_back(flayerNeg);     
 
 
         // Check overall compatibility of forward dimensions
@@ -114,6 +124,13 @@ Geometry::Geometry(const edm::ParameterSet& trackerMaterial, const GeometricSear
                 << " has z smaller than previous layer"<< std::endl
                 << " zOuter/zInner=" << Lout.getZ() << "/" << Lin.getZ() << std::endl;
     }
+
+    // add negative and positive forward layers to one single vector
+    while(!theNegForwardLayers.empty()){
+        theForwardLayers.push_back(theNegForwardLayers.back());
+        theNegForwardLayers.pop_back();
+    }
+    theForwardLayers.insert(theForwardLayers.end(), thePosForwardLayers.begin(), thePosForwardLayers.end());
 
 }
 

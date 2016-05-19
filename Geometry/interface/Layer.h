@@ -7,6 +7,7 @@
 #include <vector>
 #include <TH1.h>
 
+class DetLayer;
 class MagneticField;
 
 namespace fastsim{
@@ -16,16 +17,9 @@ namespace fastsim{
 		public:
 			~Layer(){};
 
-			/// constructor from private members
-			Layer(double coord = 0){
-				// Prepare histograms
-				thickness = TH1F("h", "h", 100, 0., coord);
-				thickness.SetDirectory(0);	
-				field = TH1F("h", "h", 100, 0., coord);
-				field.SetDirectory(0);	
-			}
-
-			Layer(std::vector<double> li, std::vector<double> th) : Layer(li.back()){				
+			Layer(double pos, std::vector<double> li, std::vector<double> th, const DetLayer* dL) :
+				position(pos),
+				detLayer(dL){				
 				// Check compatibility of thickness and limits
 				if(li.size() < 1 || th.size() != li.size() - 1){
 				    throw cms::Exception("FastSimulation/TrackerInteractionGeometry ") 
@@ -53,7 +47,10 @@ namespace fastsim{
 				for(unsigned i = 1; i < li.size(); ++i){
 					if(thickness.Integral(0, i) < 1E-10) minMaterial = thickness.GetBinLowEdge(i);
 					if(thickness.Integral(i, li.size()) < 1E-10) maxMaterial = thickness.GetBinLowEdge(i+1);
-				}	
+				}
+
+				field = TH1F("h", "h", 100, 0., li.back());
+				field.SetDirectory(0);
 			}
 
 			// Setters
@@ -61,17 +58,22 @@ namespace fastsim{
 			virtual void setMagneticField(const MagneticField &pMF, double limit) = 0;
 
 			// Getters
-			virtual const double getThickness(const math::XYZTLorentzVector& coord, const math::XYZTLorentzVector& mom) const = 0;
+			virtual const double getThickness(const math::XYZTLorentzVector& pos, const math::XYZTLorentzVector& mom) const = 0;
 			const double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
-			const double getMagneticFieldInTeslaZ(double coord) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(coord))); }
+			const DetLayer* getDetLayer(double z = 0) const { return detLayer; }
+			const double getMagneticFieldInTeslaZ(double pos) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(pos))); }
 
     	protected:
+    		// position is either r (barrelLayer) or z (forwardLayer)
+    		double position;
 			double nuclearInteractionThicknessFactor = 1.;
 
 			TH1F thickness;
 			TH1F field;
 
-			double minMaterial=0, maxMaterial=0;
+			const DetLayer *detLayer = 0;
+
+			double minMaterial = 0, maxMaterial = 0;
 	
     };
 
