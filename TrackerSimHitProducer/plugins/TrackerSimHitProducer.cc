@@ -5,10 +5,10 @@
 // 
 /**\class TrackerSimHitProducer TrackerSimHitProducer.cc FastSimulation/TrackerSimHitProducer/plugins/TrackerSimHitProducer.cc
 
- Description: [one line class summary]
+   Description: [one line class summary]
 
- Implementation:
-     [Notes on implementation]
+   Implementation:
+   [Notes on implementation]
 */
 //
 // Original Author:  Lukas Vanelderen
@@ -19,6 +19,7 @@
 
 // system include files
 #include <memory>
+#include <string>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -29,149 +30,127 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
+#include "FWCore/Framework/interface/ESHandle.h"
 
+// data formats
+#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
+#include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
+
+// fastsim includes
+#include "FastSimulation/Event/interface/FSimEvent.h"
+#include "FastSimulation/Geometry/interface/GeometryRecord.h"
+#include "FastSimulation/Propagation/interface/LayerNavigator.h"
 
 //
 // class declaration
 //
 
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
-   public:
-      explicit TrackerSimHitProducer(const edm::ParameterSet&);
-      ~TrackerSimHitProducer();
+public:
 
-      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+    explicit TrackerSimHitProducer(const edm::ParameterSet&);
+    ~TrackerSimHitProducer(){;}
 
-   private:
-      virtual void beginStream(edm::StreamID) override;
-      virtual void produce(edm::Event&, const edm::EventSetup&) override;
-      virtual void endStream() override;
+private:
 
-      //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-      //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+    virtual void produce(edm::Event&, const edm::EventSetup&) override;
 
-      // ----------member data ---------------------------
+    std::string geometryLabel_;
+    edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
+    FSimEvent simEvent_
 };
-
-//
-// constants, enums and typedefs
-//
-
-
-//
-// static data member definitions
-//
 
 //
 // constructors and destructor
 //
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
+    : geometryLabel_(iConfig.get("geometry"))
+    , genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
+    , simEvent_(iConfig.getParameter<edm::ParameterSet>("ParticleFilter"));
 {
-   //register your products
-/* Examples
-   produces<ExampleData2>();
-
-   //if do put with a label
-   produces<ExampleData2>("label");
- 
-   //if you want to put into the Run
-   produces<ExampleData2,InRun>();
-*/
-   //now do what ever other initialization is needed
-  
+    produces<edm::SimTrackContainer>();
+    produces<edm::SimVertexContainer>();
+    produces<edm::PSimHitContainer>("TrackerHits");
 }
 
-
-TrackerSimHitProducer::~TrackerSimHitProducer()
-{
- 
-   // do anything here that needs to be done at destruction time
-   // (e.g. close files, deallocate resources etc.)
-
-}
-
-
-//
-// member functions
-//
 
 // ------------ method called to produce the data  ------------
 void
 TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   using namespace edm;
-/* This is an event example
-   //Read 'ExampleData' from the Event
-   Handle<ExampleData> pIn;
-   iEvent.getByLabel("example",pIn);
+    std::unique_ptr<edm::PSimHitContainer> output_simHits(new edm::PSimHitContainer);
+    std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::PSimHitContainer);
+    std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::PSimHitContainer);
 
-   //Use the ExampleData to create an ExampleData2 which 
-   // is put into the Event
-   iEvent.put(std::make_unique<ExampleData2>(*pIn));
-*/
+    simEvent_.clear();
 
-/* this is an EventSetup example
-   //Read SetupData from the SetupRecord in the EventSetup
-   ESHandle<SetupData> pSetup;
-   iSetup.get<SetupRecord>().get(pSetup);
-*/
- 
+    edm::ESHandle < HepPDT::ParticleDataTable > pdt;
+    es.getData(pdt);
+    simEvent_.initializePdt(&(*pdt));
+
+    edm::ESHandle<fastsim::Geometry>  geometry;
+    es.get<fastsim::GeometryRecord>().get(geometryLabel_,geometry);
+
+    Handle<HepMCProduct> genParticles;
+    iEvent.getByToken(genParticlesToken,genParticles);
+    
+    RandomEngineAndDistribution random(iEvent.streamID());
+
+    simEvent.fill(*genParticles->GetEvent());
+    
+    fastsim::LayerNavigator layerNavigator;
+    
+    for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
+    {
+	RawParticle particle(simEvent_.track(simTrackIndex));
+	// TODO: what is returned in case the particle decays before it hits a layer
+	fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.magneticField(position).z()); // TODO: take magneticfield from 
+	while(layer != 0)
+	{
+	    // does it really make sense to retrieve the magnetic field from the layer?
+	    // is it much faster than getting it straight from the magnetic field?
+	    double magneticFieldZ = layer.getMagneticField(particle.position());
+
+	    // do decays, if needed
+	    if()
+	    {
+		//...;
+		// add decay vertex, add daughters, and break
+		break;
+	    }
+
+	    // do the material effects
+	    if(materialEffects)
+	    {
+		double thickness = layer.getThickNess(particle.position(),particle.momentum());
+		//...
+		// add secondaries, add endvertex
+		// if energy got too low, stop
+		if()
+		{
+		    break;
+		}
+	    }
+
+	    // create simhits
+	    if()
+	    {
+		TrackerSimhitFactor::create(/*....*/,output_simHits);
+	    }
+	    
+
+	    // move to next layer
+	    layer = layerNavigator.moveToNextLayer(particle,geometry,magneticFieldZ);
+	    
+	}
+    }
+
+    simEvent_->load(*output_simTracks);
+    simEvent_->load(*output_simVertices);
+    iEvent.put(output_simTracks.move());
+    iEvent.put(output_simVertices.move());
+    iEvent.put(output_simHits.move());
 }
 
-// ------------ method called once each stream before processing any runs, lumis or events  ------------
-void
-TrackerSimHitProducer::beginStream(edm::StreamID)
-{
-}
-
-// ------------ method called once each stream after processing all runs, lumis and events  ------------
-void
-TrackerSimHitProducer::endStream() {
-}
-
-// ------------ method called when starting to processes a run  ------------
-/*
-void
-TrackerSimHitProducer::beginRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-*/
- 
-// ------------ method called when ending the processing of a run  ------------
-/*
-void
-TrackerSimHitProducer::endRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-*/
- 
-// ------------ method called when starting to processes a luminosity block  ------------
-/*
-void
-TrackerSimHitProducer::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-*/
- 
-// ------------ method called when ending the processing of a luminosity block  ------------
-/*
-void
-TrackerSimHitProducer::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-*/
- 
-// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void
-TrackerSimHitProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
-  //The following says we do not know what parameters are allowed so do no validation
-  // Please change this to state exactly what you do use, even if it is no parameters
-  edm::ParameterSetDescription desc;
-  desc.setUnknown();
-  descriptions.addDefault(desc);
-}
-
-//define this as a plug-in
 DEFINE_FWK_MODULE(TrackerSimHitProducer);
