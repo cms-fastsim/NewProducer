@@ -1,2 +1,5 @@
-<use name="FWCore/Framework"/>
-<use name="FWCore/ParameterSet"/>
+<use name="FastSimulation/Geometry"/>
+<use name="FastSimulation/Particle"/>
+<export>
+  <lib   name="1"/>
+</export>

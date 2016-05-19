@@ -9,9 +9,9 @@ class MagneticField;
 
 #include <vector>
 
-//namespace edm { 
-//  class ParameterSet;
-//}
+namespace edm { 
+    class ParameterSet;
+}
 
 namespace fastsim{
 

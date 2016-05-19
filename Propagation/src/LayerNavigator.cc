@@ -1,9 +1,12 @@
 #include "FastSimulation/Propagation/interface/LayerNavigator.h"
 
-#include "FastSimulation/Geometry/interface/Geometry.h"              // new class, similar to the current class TrackerInteractionGeometry
-#include "FastSimulation/Geometry/interface/BarrelLayer.h"           // new class, similar to the current class TrackerLayer
-#include "FastSimulation/Geometry/interface/ForwardLayer.h"          // new class, similar to the current class TrackerLayer
-#include "FastSimulation/Propagation/interface/LayerNavigator.h"  // new class, being defined here
+#include "vector"
+
+#include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FastSimulation/Geometry/interface/Geometry.h"
+#include "FastSimulation/Geometry/interface/BarrelLayer.h"
+#include "FastSimulation/Geometry/interface/ForwardLayer.h"
+#include "FastSimulation/Propagation/interface/LayerNavigator.h"
 #include "FastSimulation/Propagation/interface/Trajectory.h"      // new class, to be defined, based on ParticlePropagator
 
 /**
@@ -51,13 +54,11 @@
 //       - for straight tracks, the optimal strategy to find the next layer might be very different
 **/
 
-using namespace fastsim;
-
-Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometry,double magneticFieldZ)
+fastsim::Layer * fastsim::LayerNavigator::moveToNextLayer(RawParticle & particle,const Geometry & geometry,double magneticFieldZ) const
 {
 
     // caclulate and store some variables related to the particle's trajectory
-    Trajectory trajectory(particle,magneticFieldZ);
+    std::unique_ptr<fastsim::Trajectory> trajectory = Trajectory::createTrajectory(particle,magneticFieldZ);
     
     /*
       find the barrel layers that enclose the particle
@@ -83,12 +84,11 @@ Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometr
 	    continue;
 	}
 	// only consier layers that are crossed by the particle
-	// no check for straight trajectories right now
-	if(trajectory.isHelix() && ( trajectory.minR() > layer->r() || trajectory.maxR() < layer->r()))
+	if(trajectory->crosses(*layer))
 	{
 	    continue;
 	}
-	if(particle.r() < layer->r() || (negativeRSpeed && particle.r() <= layer->r()))
+	if(particle.r() < layer->getRadius() || (negativeRSpeed && particle.r() <= layer->getRadius()))
 	{
 	    outerBarrelLayer = layer;
 	    break;
@@ -111,19 +111,19 @@ Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometr
 	for(auto layer = geometry.forwardLayers().begin(); layer != geometry.forwardLayers().end() ; ++layer)
 	{
 	    // only consider layers that have material betweeen innerBarrel and outerBarrel
-	    if( (innerBarrelLayer != geometry.barrelLayers().end() && layer->materialMaxR() < innerBarrelLayer->r()) ||
-		(outerBarrelLayer != geometry.barrelLayers().end() && layer->materialMinR() > outerBarrelLayer->r()))
+	    if( (innerBarrelLayer != geometry.barrelLayers().end() && layer->getMaxMaterialR() < innerBarrelLayer->getRadius()) ||
+		(outerBarrelLayer != geometry.barrelLayers().end() && layer->getMinMaterialR() > outerBarrelLayer->getRadius()))
 	    {
 		continue;
 	    }
 	    //only consider layers with material in the r-region of the trajectory
-	    if(trajectory.isHelix() && ( trajectory.minR() > layer->maxMaterialR() || trajectory.maxR() < layer->minMaterialR()))
+	    if(trajectory->crossesMaterial(*layer))
 	    {
 		continue;
 	    }
 	    if(particle.pz() < 0)  // case particle moves negative direction
 	    {
-		if(particle.z() <= layer->z())
+		if(particle.z() <= layer->getZ())
 		{
 		    break;
 		}
@@ -134,7 +134,7 @@ Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometr
 	    }
 	    else               // case particle moves positive direction
 	    {
-		if(particle.z() < layer->z())
+		if(particle.z() < layer->getZ())
 		{
 		    forwardLayer = layer;
 		    break;
@@ -147,15 +147,16 @@ Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometr
        find earliest intersection with time > particle.t
     */
     
-    vector<Layer*> layers = {&(*forwardLayer),&(*innerBarrelLayer),&(*outerBarrelLayer)};
-    Layer * crossedLayer = 0;
+    std::vector<fastsim::Layer*> layers;
+    //layers.push_back(forwardLayer == geometry.forwardLayers().end() ? 0 : &(*forwardLayer));
+    fastsim::Layer * crossedLayer = 0;
     double deltaTime = -1;
     for(auto layer : layers)
     {
 	if(layer)
 	{
-	    double tempDeltaTime = trajectory.nextInterSectionTime(*layer);
-	    if(crossedLayer == 0 || tempDeltaTime)
+	    double tempDeltaTime = trajectory->nextCrossingTime(*layer);
+	    if(tempDeltaTime > 0 && (crossedLayer == 0 || tempDeltaTime< deltaTime))
 	    {
 		crossedLayer = layer;
 		deltaTime = tempDeltaTime;
@@ -168,10 +169,9 @@ Layer & LayerNavigator::moveToNextLayer(Particle & part,const Geometry & geometr
     */
     if(crossedLayer)
     {
-	trajectory.move(deltaTime);
-	particle.setPosition(trajectory.position());
-	particle.setMomentum(trajectory.momentum());
-	particle.setTime(particle.getTime() + deltaTime);
+	trajectory->move(deltaTime);
+	particle.setVertex(trajectory->getPosition());
+	particle.SetXYZT(trajectory->getMomentum().Px(),trajectory->getMomentum().Py(),trajectory->getMomentum().Pz(),trajectory->getMomentum().E());
     }
 
     /*

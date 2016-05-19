@@ -6,6 +6,7 @@ class RawParticle;
 namespace fastsim
 {
     class Layer;
+    class Geometry;
     class LayerNavigator
     {
     public:

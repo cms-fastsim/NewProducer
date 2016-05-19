@@ -121,7 +121,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    */
 
 	    // create simhits
-	    if(layer->detLayer())
+	    if(layer->getDetLayer())
 	    {
 		// associate hits to simTrack
 		int simTrackId = simTrackIndex;
@@ -131,7 +131,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 		// See ... for more details
 		if ( !simTrack.noMother() && simTrack.mother().closestDaughterId() == simTrackId )
 		    simTrackId = simTrack.mother().id();
-		simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->detLayer()),magneticFieldZ,*output_simHits);
+		simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->getDetLayer()),magneticFieldZ,*output_simHits);
 	    }
 	    
 	    // kinematic cuts

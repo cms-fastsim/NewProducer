@@ -38,8 +38,8 @@ namespace fastsim{
 			const double getZ() const { return z; }
 			const DetLayer* getDetLayer(double z = 0) const { return (z < 0 ? negDiskDetLayer : posDiskDetLayer); }
 
-			const double minMaterialR() const { return minMaterial; }
-			const double maxMaterialR() const { return maxMaterial; }
+			const double getMinMaterialR() const { return minMaterial; }
+			const double getMaxMaterialR() const { return maxMaterial; }
 
     	private:
     		double z;

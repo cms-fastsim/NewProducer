@@ -7,6 +7,7 @@
 #include <TH1.h>
 
 class MagneticField;
+class DetLayer;
 
 namespace fastsim{
 
@@ -64,6 +65,8 @@ namespace fastsim{
 			double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
 			double getMagneticFieldInTeslaZ(double coord) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(coord))); }
 
+	                DetLayer * getDetLayer(){return 0;}
+
     	protected:
 			double nuclearInteractionThicknessFactor = 1.;
 
@@ -72,6 +75,7 @@ namespace fastsim{
 
 			double minMaterial=0, maxMaterial=0;
 	
+
     };
 
 }
