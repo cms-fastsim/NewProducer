@@ -8,7 +8,8 @@ namespace fastsim
     class Layer;
     class LayerNavigator
     {
-	Layer * moveToNextLayer(RawParticle * particle,const Geometry & geometry,double magneticFieldZ) const;
+    public:
+	Layer * moveToNextLayer(RawParticle & particle,const Geometry & geometry,double magneticFieldZ) const;
     };
 }
 

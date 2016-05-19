@@ -1,4 +1,13 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/PluginManager"/>
 <use name="FWCore/ParameterSet"/>
+<use name="SimGeneral/HepPDTRecord"/>
+<use name="FastSimulation/Utilities"/>
+<use name="FastSimulation/Event"/>
+<use name="FastSimulation/Particle"/>
+<use name="FastSimulation/TrackerSimHitProducer"/>
+#<use name="FastSimulation/Geometry"/>
+#<use name="FastSimulation/Propagation"/>
+<use name="hepmc"/>
+<use name="clhep"/>
 <flags EDM_PLUGIN="1"/>

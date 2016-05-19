@@ -1,33 +1,13 @@
-// -*- C++ -*-
-//
-// Package:    FastSimulation/TrackerSimHitProducer
-// Class:      TrackerSimHitProducer
-// 
-/**\class TrackerSimHitProducer TrackerSimHitProducer.cc FastSimulation/TrackerSimHitProducer/plugins/TrackerSimHitProducer.cc
-
-   Description: [one line class summary]
-
-   Implementation:
-   [Notes on implementation]
-*/
-//
-// Original Author:  Lukas Vanelderen
-//         Created:  Wed, 18 May 2016 12:53:13 GMT
-//
-//
-
-
 // system include files
 #include <memory>
 #include <string>
 
-// user include files
+// framework
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
-
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -36,15 +16,16 @@
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 #include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
+#include "DataFormats/Common/interface/Handle.h"
 
-// fastsim includes
+// fastsim
+#include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
 #include "FastSimulation/Event/interface/FSimEvent.h"
-#include "FastSimulation/Geometry/interface/GeometryRecord.h"
+#include "FastSimulation/Geometry/interface/Geometry.h"
+#include "FastSimulation/Geometry/interface/Layer.h"
 #include "FastSimulation/Propagation/interface/LayerNavigator.h"
-
-//
-// class declaration
-//
+#include "FastSimulation/TrackerSimHitProducer/interface/TrackerSimHitFactory.h"
+#include "FastSimulation/Particle/interface/RawParticle.h"
 
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
 public:
@@ -58,20 +39,27 @@ private:
 
     std::string geometryLabel_;
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
-    FSimEvent simEvent_
+    FSimEvent simEvent_;
+    //std::unique_ptr<MaterialEffects> materialEffects_;
 };
 
 //
 // constructors and destructor
 //
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
-    : geometryLabel_(iConfig.get("geometry"))
+    : geometryLabel_(iConfig.getParameter<std::string>("geometry"))
     , genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
-    , simEvent_(iConfig.getParameter<edm::ParameterSet>("ParticleFilter"));
+    , simEvent_(iConfig.getParameter<edm::ParameterSet>("ParticleFilter"))
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
     produces<edm::PSimHitContainer>("TrackerHits");
+    /*
+    if(iConfig.exists("materialEffects"))
+    {
+	materialEffects_.reset(new MaterialEffects(iConfig.getParameter<edm::ParameterSet>("MaterialEffects")));
+    }
+    */
 }
 
 
@@ -80,77 +68,105 @@ void
 TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
     std::unique_ptr<edm::PSimHitContainer> output_simHits(new edm::PSimHitContainer);
-    std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::PSimHitContainer);
-    std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::PSimHitContainer);
-
-    simEvent_.clear();
+    std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
+    std::unique_ptr<edm::SimTrackContainer> TEMP(new edm::SimTrackContainer);
+    std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::SimVertexContainer);
 
     edm::ESHandle < HepPDT::ParticleDataTable > pdt;
-    es.getData(pdt);
+    iSetup.getData(pdt);
     simEvent_.initializePdt(&(*pdt));
 
     edm::ESHandle<fastsim::Geometry>  geometry;
-    es.get<fastsim::GeometryRecord>().get(geometryLabel_,geometry);
+    //iSetup.get<fastsim::GeometryRecord>().get(geometryLabel_,geometry);
 
-    Handle<HepMCProduct> genParticles;
-    iEvent.getByToken(genParticlesToken,genParticles);
+    edm::Handle<edm::HepMCProduct> genParticles;
+    iEvent.getByToken(genParticlesToken_,genParticles);
     
     RandomEngineAndDistribution random(iEvent.streamID());
 
-    simEvent.fill(*genParticles->GetEvent());
+    simEvent_.clear();
+    edm::EventID eventId = iEvent.id();
+    simEvent_.fill(*genParticles->GetEvent(),eventId);
     
     fastsim::LayerNavigator layerNavigator;
+
+    fastsim::TrackerSimHitFactory simHitFactory;
     
     for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
     {
-	RawParticle particle(simEvent_.track(simTrackIndex));
+	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
+
+	// define a particle
+	RawParticle particle(simTrack.type(),simTrack.momentum());
+	particle.setVertex(simTrack.vertex().position());
+	// TODO: set the decay time
+
 	// TODO: what is returned in case the particle decays before it hits a layer
-	fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.magneticField(position).z()); // TODO: take magneticfield from 
+	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.magneticField(position).z()); // TODO: take magneticfield from 
+	fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,*geometry,3.8);// TODO: take magneticfield
 	while(layer != 0)
 	{
 	    // does it really make sense to retrieve the magnetic field from the layer?
 	    // is it much faster than getting it straight from the magnetic field?
-	    double magneticFieldZ = layer.getMagneticField(particle.position());
-
-	    // do decays, if needed
-	    if()
+	    //double magneticFieldZ = layer.getMagneticField(particle.position());
+	    double magneticFieldZ = 3.8;
+	    
+	    // do the material effects
+	    // commented out for now, cause it depends on the layer interface, which changes
+	    /*
+	    if(materialEffects_)
 	    {
-		//...;
-		// add decay vertex, add daughters, and break
+		materialEffects_->interact(simEvent_,*layer,particle,simTrackIndex,&random);
+	    }
+	    */
+
+	    // create simhits
+	    if(layer->detLayer())
+	    {
+		// associate hits to simTrack
+		int simTrackId = simTrackIndex;
+		// If a hadron suffered a nuclear interaction, associate hits of the closest daughter to the mother's track.
+		// See MaterialEffects for more details
+		// The same applies to a charged particle decay into another charged particle.
+		// See ... for more details
+		if ( !simTrack.noMother() && simTrack.mother().closestDaughterId() == simTrackId )
+		    simTrackId = simTrack.mother().id();
+		simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->detLayer()),magneticFieldZ,*output_simHits);
+	    }
+	    
+	    // kinematic cuts
+	    //if()
+	    //{
+	    //break;
+	    //}
+
+	    // temporary: break after 25 ns
+	    if(particle.t() > 25)
+	    {
 		break;
 	    }
 
-	    // do the material effects
-	    if(materialEffects)
-	    {
-		double thickness = layer.getThickNess(particle.position(),particle.momentum());
-		//...
-		// add secondaries, add endvertex
-		// if energy got too low, stop
-		if()
-		{
-		    break;
-		}
-	    }
-
-	    // create simhits
-	    if()
-	    {
-		TrackerSimhitFactor::create(/*....*/,output_simHits);
-	    }
-	    
-
 	    // move to next layer
-	    layer = layerNavigator.moveToNextLayer(particle,geometry,magneticFieldZ);
+	    layer = layerNavigator.moveToNextLayer(particle,*geometry,magneticFieldZ);
 	    
 	}
+
+	/*
+	// do decays, if needed
+	if()
+	{
+	    //...;
+	    // add decay vertex, add daughters, and break
+	}
+	*/
+
     }
 
-    simEvent_->load(*output_simTracks);
-    simEvent_->load(*output_simVertices);
-    iEvent.put(output_simTracks.move());
-    iEvent.put(output_simVertices.move());
-    iEvent.put(output_simHits.move());
+    simEvent_.load(*output_simTracks,*TEMP);
+    simEvent_.load(*output_simVertices);
+    iEvent.put(std::move(output_simTracks));
+    iEvent.put(std::move(output_simVertices));
+    iEvent.put(std::move(output_simHits));
 }
 
 DEFINE_FWK_MODULE(TrackerSimHitProducer);
