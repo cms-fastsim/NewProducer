@@ -63,7 +63,7 @@ namespace fastsim{
 			const double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
 			const DetLayer* getDetLayer(double z = 0) const { return detLayer; }
 			const double getMagneticFieldInTeslaZ(double pos) const{ return field.GetBinContent(field.GetXaxis()->FindBin(fabs(pos))); }
-
+	                virtual bool isForward() const = 0;
     	protected:
     		// position is either r (barrelLayer) or z (forwardLayer)
     		double position;

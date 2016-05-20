@@ -54,7 +54,7 @@
 //       - for straight tracks, the optimal strategy to find the next layer might be very different
 **/
 
-fastsim::Layer * fastsim::LayerNavigator::moveToNextLayer(RawParticle & particle,const Geometry & geometry,double magneticFieldZ) const
+const fastsim::Layer * fastsim::LayerNavigator::moveToNextLayer(RawParticle & particle,const Geometry & geometry,double magneticFieldZ) const
 {
 
     // caclulate and store some variables related to the particle's trajectory
@@ -147,15 +147,15 @@ fastsim::Layer * fastsim::LayerNavigator::moveToNextLayer(RawParticle & particle
        find earliest intersection with time > particle.t
     */
     
-    std::vector<fastsim::Layer*> layers;
-    //layers.push_back(forwardLayer == geometry.forwardLayers().end() ? 0 : &(*forwardLayer));
-    fastsim::Layer * crossedLayer = 0;
+    std::vector<const fastsim::Layer*> layers;
+    layers.push_back(forwardLayer == geometry.forwardLayers().end() ? 0 : &(*forwardLayer));
+    const fastsim::Layer * crossedLayer = 0;
     double deltaTime = -1;
     for(auto layer : layers)
     {
 	if(layer)
 	{
-	    double tempDeltaTime = trajectory->nextCrossingTime(*layer);
+	    double tempDeltaTime = trajectory->nextCrossingTimeC(*layer);
 	    if(tempDeltaTime > 0 && (crossedLayer == 0 || tempDeltaTime< deltaTime))
 	    {
 		crossedLayer = layer;

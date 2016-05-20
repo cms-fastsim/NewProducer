@@ -103,7 +103,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
 	// TODO: what is returned in case the particle decays before it hits a layer
 	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.magneticField(position).z()); // TODO: take magneticfield from 
-	fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,*geometry,3.8);// TODO: take magneticfield
+	const fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,*geometry,3.8);// TODO: take magneticfield
 	while(layer != 0)
 	{
 	    // does it really make sense to retrieve the magnetic field from the layer?

@@ -34,7 +34,9 @@ namespace fastsim{
 				GlobalVector P(mom.Px(),mom.Py(),mom.Pz());
 				GlobalVector N(0.,0.,1.);
 				return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(pos.R()))) / fabs(P.dot(N)) * P.mag();
+
 			}
+			bool isForward() const override {return true;}
 
     };
 

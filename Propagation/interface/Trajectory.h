@@ -18,11 +18,16 @@ namespace fastsim
 	virtual bool crossesMaterial(const ForwardLayer & layer) const = 0;
 	math::XYZTLorentzVectorD & getPosition(){return position_;}
 	math::XYZTLorentzVectorD & getMomentum(){return momentum_;}
-	virtual double nextCrossingTime(const Layer & layer) const = 0;
-	virtual void move(double deltaT) = 0;
-    private:
+	double nextCrossingTimeC(const Layer & layer) const;
+	double nextCrossingTimeC(const ForwardLayer & layer) const;
+	virtual double nextCrossingTimeC(const BarrelLayer & layer) const = 0;
+	virtual void move(double deltaTC) = 0;
+    protected:
+	Trajectory(const RawParticle & particle);
 	math::XYZTLorentzVectorD position_;
 	math::XYZTLorentzVectorD momentum_;
+	static const double speedOfLight_; // in cm / ns
+	// consider storing particle mass, as it is needed frequently
     };
 }
 
