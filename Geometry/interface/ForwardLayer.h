@@ -36,6 +36,11 @@ namespace fastsim{
 				return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(pos.R()))) / fabs(P.dot(N)) * P.mag();
 
 			}
+
+			const double getMagneticFieldInTeslaZ(math::XYZTLorentzVector pos) const {
+				return field.GetBinContent(field.GetXaxis()->FindBin(fabs(pos.Perp2())));
+			}
+
 			bool isForward() const override {return true;}
 
     };

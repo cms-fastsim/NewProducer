@@ -24,11 +24,12 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
     // substitute: v_y = p_y / E * c  ( note: extra * c absorbed in p_y units)
     // => t*c = (-b +/- sqrt(b^2 - ac) ) / a * E
     // with a = p_x^2 + p_y^2
-    // with b = p_x + p_y^2
+    // with b = p_x + p_y^2     // SIMON: I don't think this is what you ment to write
     // with c = x_0^2 + y_0^2 - R^2
     double a = momentum_.Perp2();
     double b = (position_.x()*momentum_.px() + position_.y()*momentum_.py() );
     double c = position_.Perp2() - layer.getRadius()*layer.getRadius();
+
     double delta = b*b - a*c;
     if(delta < 0)
     {
@@ -38,7 +39,7 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
 
     //
     // return the earliest solution > 0, 
-    // return -1 if no positive sollution exists
+    // return -1 if no positive solution exists
     // note: a always positive, sqrtDelta always positive
     //
     if(-b > sqrtDelta)

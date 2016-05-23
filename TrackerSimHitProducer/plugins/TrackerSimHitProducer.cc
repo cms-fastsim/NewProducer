@@ -102,13 +102,14 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	// TODO: set the decay time
 
 	// TODO: what is returned in case the particle decays before it hits a layer
-	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.magneticField(position).z()); // TODO: take magneticfield from 
+	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.getMagField().inTesla(
+	//		GlobalPoint(particle.vertex().position().x(), particle.vertex().position().y(), particle.vertex().position().z())).z()); // TODO: take magneticfield from 
 	const fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,*geometry,3.8);// TODO: take magneticfield
 	while(layer != 0)
 	{
 	    // does it really make sense to retrieve the magnetic field from the layer?
 	    // is it much faster than getting it straight from the magnetic field?
-	    //double magneticFieldZ = layer.getMagneticField(particle.position());
+	    //double magneticFieldZ = layer.getMagneticFieldInTeslaZ(particle.vertex().position());
 	    double magneticFieldZ = 3.8;
 	    
 	    // do the material effects

@@ -13,9 +13,13 @@ fastsim::HelixTrajectory::HelixTrajectory(const RawParticle & particle,double ma
     : Trajectory(particle)
     , radius_( abs(momentum_.Pt() / ( speedOfLight_ * 1e-4 * magneticFieldZ * particle.charge() )))
     , phi0_(std::atan2(momentum_.Px(),momentum_.Py()) - (momentum_.Px() > 0 || momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ))  // something wrong here, should depend on direction of magnetic field and charge!
+    // SIMON: no, this formula is correct! The magnetic force is always perpendicular to the momentum!
+    // - the sign of the bField and the sign of charge determine the direction of the rotation. However, phi0 stays the same
+    // - the magnitude of the bField and the magnitude of the charge determine the radius of the helix. Again, this does not influence phi0
     , centerX_(position_.x() + radius_*std::cos(phi0_))
     , centerY_(position_.y() - radius_*std::sin(phi0_))
     , centerR_(centerX_*centerX_ + centerY_*centerY_)
+    // SIMON: should you use the sqrt here? centerR_=sqrt(centerX_*centerX_ + centerY_*centerY_)
     , minR_(centerR_ - radius_)
     , maxR_(centerR_ + radius_)
     , phiSpeed_( momentum_.Pt() / momentum_.E() * speedOfLight_ / radius_ * (particle.charge() > 0 ? 1. : -1) * (magneticFieldZ > 0 ? 1. : -1 ) ) // make sure you have the right signs here!
@@ -68,6 +72,7 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     // c = E^2 - G^2
     //
     // TODO: try to find the solution with less operations
+    // SIMON: I would have done it the same way. There is nothing else I can think of. Maybe use centerR_^2 instead of centerX_*centerX_ + centerY_*centerY_
 
     double E = centerX_*centerX_ + centerY_*centerY_ + radius_*radius_ - layer.getRadius()*layer.getRadius();
     double F = 2*centerY_*radius_;
@@ -87,6 +92,7 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     double phi1 = std::asin((-b - sqrtDelta)/ 2. / a);
     double phi2 = std::asin((-b + sqrtDelta)/ 2. / a);
     // asin is ambiguous, make sure to have the right solution
+    // SIMON: asin always returns the sin in the interval [-pi/2, +pi/2]. That should be the one that we want?
     // TODO: make sure this condition is correct
     if( (centerR_ > layer.getRadius() && centerX_ > 0.) || 
 	(centerR_ < layer.getRadius() && centerX_ < 0.) )
@@ -123,9 +129,14 @@ void fastsim::HelixTrajectory::move(double deltaTimeC)
 	position_.z() + momentum_.pz()/momentum_.E()*deltaTimeC,
 	position_.t() + deltaT);
     double momentumPhi = positionPhi  - (momentum_.Px() > 0 || momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ); // something wrong here, should depend on direction of magnetic field and charge!
+    // SIMON: sorry, I don't understand what you are calculating here.. 
     momentum_.SetXYZT(
 	momentum_.Pt()*std::cos(momentumPhi),
 	momentum_.Pt()*std::sin(momentumPhi),
+    // SIMON: I'm not sure if this is correct. Using the radial speed along the trajectory (pr^2=px^2+py^2) it would be
+    // px = pr*cosPhi
+    // py = pr*sinPhi
+    // pr should be what you call phiSpeed_? I'm not 100% sure
 	momentum_.Pz(),
 	momentum_.E());
 }
