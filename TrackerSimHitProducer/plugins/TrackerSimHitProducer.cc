@@ -18,6 +18,11 @@
 #include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
 #include "DataFormats/Common/interface/Handle.h"
 
+// geometry
+#include "RecoTracker/Record/interface/TrackerRecoGeometryRecord.h"
+#include "MagneticField/Engine/interface/MagneticField.h"
+#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+
 // fastsim
 #include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
 #include "FastSimulation/Event/interface/FSimEvent.h"
@@ -26,6 +31,7 @@
 #include "FastSimulation/Propagation/interface/LayerNavigator.h"
 #include "FastSimulation/TrackerSimHitProducer/interface/TrackerSimHitFactory.h"
 #include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FastSimulation/Particle/interface/ParticleTable.h"
 
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
 public:
@@ -37,9 +43,10 @@ private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&) override;
 
-    std::string geometryLabel_;
+    std::string alignmentLabel_;
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
     FSimEvent simEvent_;
+    edm::ParameterSet detectorLayersCfg_;
     //std::unique_ptr<MaterialEffects> materialEffects_;
 };
 
@@ -47,9 +54,10 @@ private:
 // constructors and destructor
 //
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
-    : geometryLabel_(iConfig.getParameter<std::string>("geometry"))
+    : alignmentLabel_(iConfig.getParameter<std::string>("alignmentLabel"))
     , genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
-    , simEvent_(iConfig.getParameter<edm::ParameterSet>("ParticleFilter"))
+    , simEvent_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
+    , detectorLayersCfg_(iConfig.getParameter<edm::ParameterSet>("detectorLayers"))
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
@@ -75,10 +83,16 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     edm::ESHandle < HepPDT::ParticleDataTable > pdt;
     iSetup.getData(pdt);
     simEvent_.initializePdt(&(*pdt));
+    ParticleTable::Sentry ptable(&(*pdt));
 
-    edm::ESHandle<fastsim::Geometry>  geometry;
-    //iSetup.get<fastsim::GeometryRecord>().get(geometryLabel_,geometry);
-
+    edm::ESHandle<MagneticField> magneticField;
+    iSetup.get<IdealMagneticFieldRecord>().get(magneticField);
+    
+    edm::ESHandle<GeometricSearchTracker> geometricSearchTracker;
+    iSetup.get<TrackerRecoGeometryRecord>().get(alignmentLabel_,geometricSearchTracker);
+    
+    fastsim::Geometry geometry(detectorLayersCfg_,*geometricSearchTracker,&(*magneticField));
+    
     edm::Handle<edm::HepMCProduct> genParticles;
     iEvent.getByToken(genParticlesToken_,genParticles);
     
@@ -91,7 +105,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     fastsim::LayerNavigator layerNavigator;
 
     fastsim::TrackerSimHitFactory simHitFactory;
-    
+
     for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
     {
 	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
@@ -104,7 +118,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	// TODO: what is returned in case the particle decays before it hits a layer
 	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.getMagField().inTesla(
 	//		GlobalPoint(particle.vertex().position().x(), particle.vertex().position().y(), particle.vertex().position().z())).z()); // TODO: take magneticfield from 
-	const fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,*geometry,3.8);// TODO: take magneticfield
+	const fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,3.8);// TODO: take magneticfield
 	while(layer != 0)
 	{
 	    // does it really make sense to retrieve the magnetic field from the layer?
@@ -148,7 +162,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    }
 
 	    // move to next layer
-	    layer = layerNavigator.moveToNextLayer(particle,*geometry,magneticFieldZ);
+	    layer = layerNavigator.moveToNextLayer(particle,geometry,magneticFieldZ);
 	    
 	}
 
