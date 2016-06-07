@@ -14,6 +14,15 @@ cd FastSimulation/Geometry
 scram b # works right now
 ```
 
+# Hot to run
+
+```
+# create a file with generated events
+source FastSimulation/TrackerSimHitProducer/test/gen.sh
+# pass the generated events to simulation
+source FastSimulation/TrackerSimHitProducer/python/conf_cfg.py
+```
+
 # More info on the project
 
 See comments in FastSimulation/Propagation/src/LayerNavigator.cc
