@@ -13,17 +13,20 @@ namespace fastsim{
 		public:
 			~BarrelLayer(){};
 
-			BarrelLayer(double radius, std::vector<double> limits, std::vector<double> thickness, const DetLayer *detLayer = 0) :
+			BarrelLayer(double radius, const std::vector<double> & limits, const std::vector<double> & thickness, const DetLayer *detLayer) :
 				Layer(radius, limits, thickness, detLayer) {}
+                         
+	BarrelLayer(BarrelLayer &&) = default;
 
-			void setMagneticField(const MagneticField &pMF, double limit){
-				field = TH1F("h", "h", 100, 0., limit);
-				field.SetDirectory(0);
-
-				for(int i = 0; i <= 101; i++){
-      				field.SetBinContent(i, pMF.inTesla(GlobalPoint(position, 0., field.GetXaxis()->GetBinCenter(i))).z());
-      			}
-			}
+	void setMagneticField(const MagneticField & magneticField, double limit)
+	{
+	    field.reset(new TH1F("h", "h", 100, 0., limit));
+	    field->SetDirectory(0);
+	    for(int i = 0; i <= 101; i++)
+	    {
+		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(position, 0., field->GetXaxis()->GetBinCenter(i))).z());
+	    }
+	}
 
 			const double getRadius() const { return position; }
 
@@ -35,9 +38,9 @@ namespace fastsim{
 				return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(pos.Z()))) / fabs(P.dot(N)) * P.mag();
 			}
 
-			const double getMagneticFieldInTeslaZ(math::XYZTLorentzVector pos) const {
-				return field.GetBinContent(field.GetXaxis()->FindBin(fabs(pos.z())));
-			}
+	const double getMagneticFieldZ(math::XYZTLorentzVector pos) const {
+	    return Layer::getMagneticFieldZ(fabs(pos.z()));
+	}
 
 	        bool isForward() const override { return false;}
 	};

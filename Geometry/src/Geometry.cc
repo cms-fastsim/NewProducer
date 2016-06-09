@@ -17,192 +17,257 @@
 #include "FastSimulation/Geometry/interface/Geometry.h"
 
 #include <iostream>
+#include <map>
 
 using namespace fastsim;
 
-Geometry::Geometry(const edm::ParameterSet& trackerMaterial, const GeometricSearchTracker& theGeomSearchTracker, const MagneticField* pMF) : theField(pMF)
+Geometry::Geometry(const edm::ParameterSet& cfg,const GeometricSearchTracker * geometricSearchTracker)
+    : magneticField_(0)
+    , magneticFieldZ_(0.)
 {
     
-    std::vector<edm::ParameterSet> thePSetBarrelLayers = trackerMaterial.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers");
-    std::vector<edm::ParameterSet> thePSetForwardLayers = trackerMaterial.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers");
+    /*
+      create the barrel layers
+    */
+    for(const edm::ParameterSet & layerCfg : cfg.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers"))
+    {
+	// extract the thicness of the layer
+	std::vector<double> limits = layerCfg.getUntrackedParameter<std::vector<double> >("limits",std::vector<double>());
+	std::vector<double> thickness = layerCfg.getUntrackedParameter<std::vector<double> >("thickness",std::vector<double>());
 
-    // Get max dimensions of barrel/forward layers
-    double maxZ = 0., maxR = 0.;
-    edm::ParameterSet outerBarrel = thePSetBarrelLayers.back();
-    edm::ParameterSet outerForward = thePSetForwardLayers.back();
-
-    if(outerBarrel.existsAs<double>("radius")){
-        maxR = outerBarrel.getParameter<double>("radius");
-    }else if(outerBarrel.existsAs<std::string>("activeLayer")){
-        if(getBarrelDetLayer(outerBarrel.getParameter<std::string>("activeLayer"), theGeomSearchTracker))    
-            maxR = static_cast<BarrelDetLayer const*>(getBarrelDetLayer(outerBarrel.getParameter<std::string>("activeLayer"), theGeomSearchTracker))->specificSurface().radius();
-    }
-    if(outerForward.existsAs<double>("z")){
-        maxZ = outerForward.getParameter<double>("z");
-    }else if(outerForward.existsAs<std::string>("activeLayer")){
-        if(getForwardDetLayers(outerForward.getParameter<std::string>("activeLayer"), theGeomSearchTracker)[0])    
-            maxZ = static_cast<BarrelDetLayer const*>(getForwardDetLayers(outerForward.getParameter<std::string>("activeLayer"), theGeomSearchTracker)[0])->specificSurface().radius();
-    }
-
-    for(std::vector<edm::ParameterSet>::const_iterator it_barrel = thePSetBarrelLayers.begin(); it_barrel != thePSetBarrelLayers.end(); ++it_barrel){
-        double radius = 0.;
-        std::vector<double> limits, thickness;
-        const DetLayer* detLayer = 0;
-
-        if(it_barrel->existsAs<std::vector<double>>("limits")) limits = it_barrel->getParameter<std::vector<double>>("limits");
-        if(it_barrel->existsAs<std::vector<double>>("thickness")) thickness = it_barrel->getParameter<std::vector<double>>("thickness");
-        if(it_barrel->existsAs<std::string>("activeLayer")) detLayer = getBarrelDetLayer(it_barrel->getParameter<std::string>("activeLayer"), theGeomSearchTracker);
-
-        // If hardcoded radius is defined: overwrite active layer properties
-        if(it_barrel->existsAs<double>("radius")){
-            radius = it_barrel->getParameter<double>("radius");
-        }else if(detLayer){
+	// extract the associated active layer
+	const DetLayer * detLayer = getBarrelDetLayer( layerCfg.getUntrackedParameter<std::string>("activeLayer",""), geometricSearchTracker );
+	
+        // first try extracting radius from configuration
+	
+        double radius = layerCfg.getUntrackedParameter<double>("radius",-1.);
+	// then try extracting from detLayer
+	if(radius <= 0 && detLayer)
+	{
             radius = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
         }
+	// then throw error
+	if(radius <= 0)
+	{
+	    throw cms::Exception("FastSimulation/Geometry") << " no way to extract a radius for barrel layer " << barrelLayers_.size() + 1 << std::endl;
+	}
+	
+	// check that the radius is larger than the radius of the previous layer
+	if(barrelLayers_.size() > 0)
+	{
+	    if(radius < barrelLayers_.back()->getRadius())
+	    {
+		throw cms::Exception("FastSimulation/Geometry") << "barrel layers must be ordered to increasing radius" << std::endl;
+	    }
+	}
 
-        BarrelLayer blayer(radius, limits, thickness, detLayer);
-        if(pMF) blayer.setMagneticField(*pMF, maxZ);
-
-        theBarrelLayers.push_back(blayer);        
-
-
-        // Check overall compatibility of barrel dimensions
-        if(theBarrelLayers.size() <= 1) continue;
-        //std::cout.precision(4);
-        const BarrelLayer Lout = theBarrelLayers[theBarrelLayers.size()-1];
-        const BarrelLayer Lin = theBarrelLayers[theBarrelLayers.size()-2];
-        if(Lout.getRadius() < Lin.getRadius())
-            throw cms::Exception("FastSimulation/Geometry ") 
-                << " WARNING with BarrelLayer number " << theBarrelLayers.size() 
-                << " has radius smaller than previous layer"<< std::endl
-                << " rOuter/rInner=" << Lout.getRadius() << "/" << Lin.getRadius() << std::endl;
+	// and construct the layer inside the list of barrel layers
+        barrelLayers_.emplace_back(new BarrelLayer(radius, limits, thickness, detLayer));
+	barrelLayers_.back()->setIndex(barrelLayers_.size()-1);
     }
 
+    /*
+      create the forward layers
+    */
+    for(const edm::ParameterSet & layerCfg : cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
+    {
 
-    std::vector<ForwardLayer> thePosForwardLayers;
-    std::vector<ForwardLayer> theNegForwardLayers;
+	std::string pset;
+	layerCfg.allToString(pset);
 
-    for(std::vector<edm::ParameterSet>::const_iterator it_forward = thePSetForwardLayers.begin(); it_forward != thePSetForwardLayers.end(); ++it_forward){
-        double z = 0.;
-        std::vector<double> limits, thickness;
-        std::vector<const DetLayer*> detLayers(2, 0);
-
-        if(it_forward->existsAs<std::vector<double>>("limits")) limits = it_forward->getParameter<std::vector<double>>("limits");
-        if(it_forward->existsAs<std::vector<double>>("thickness")) thickness = it_forward->getParameter<std::vector<double>>("thickness");
-        if(it_forward->existsAs<std::string>("activeLayer")) detLayers = getForwardDetLayers(it_forward->getParameter<std::string>("activeLayer"), theGeomSearchTracker);
-
-        // If hardcoded z is defined: overwrite active layer properties
-        if(it_forward->existsAs<double>("z")){
-            z = it_forward->getParameter<double>("z");
-        }else if(detLayers[0]){
-            z = static_cast<ForwardDetLayer const*>(detLayers.at(0))->surface().position().z();
+	// extract the thicness of the layer
+	std::vector<double> limits = layerCfg.getUntrackedParameter<std::vector<double> >("limits",std::vector<double>());
+	std::vector<double> thickness = layerCfg.getUntrackedParameter<std::vector<double> >("thickness",std::vector<double>());
+	
+	// extract the associated active layer
+	std::string activeLayerName = layerCfg.getUntrackedParameter<std::string>("activeLayer","");
+	const DetLayer * posDetLayer = 0;
+	const DetLayer * negDetLayer = 0;
+	if(!activeLayerName.empty())
+	{
+	    negDetLayer = getForwardDetLayer("neg" + activeLayerName  , geometricSearchTracker );
+	    posDetLayer = getForwardDetLayer("pos" + activeLayerName  , geometricSearchTracker );
+	}
+	
+        // first try extracting radius from configuration
+        double z = layerCfg.getUntrackedParameter<double>("z",-1);
+	// then try extracting from detLayer
+	if(z <= 0 && posDetLayer)
+	{
+            z = static_cast<ForwardDetLayer const*>(posDetLayer)->position().z();
         }
+	// then throw error
+	if(z <= 0)
+	{
+	    throw cms::Exception("FastSimulation/Geometry") << " no way to extract a position for this forward layer..." << std::endl;
+	}
 
-        ForwardLayer flayerPos(z, limits, thickness, detLayers[0]);
-        if(pMF) flayerPos.setMagneticField(*pMF, maxR);
-        if(flayerPos.getDetLayer()) if(flayerPos.getDetLayer()->subDetector() == GeomDetEnumerators::subDetGeom[GeomDetEnumerators::TEC])
-            flayerPos.setNuclearInteractionThicknessFactor(1.2);
+	// check that |z| is larger than for the previous layer
+	if(forwardLayers_.size() > 0)
+	{
+	    if(z < -forwardLayers_.back()->getZ())
+	    {
+		throw cms::Exception("FastSimulation/Geometry") << "forward layers must be ordered to increasing z" << std::endl;
+	    }
+	}
 
-        thePosForwardLayers.push_back(flayerPos);
+	// create and insert the layer on the negative side
+	forwardLayers_.emplace(forwardLayers_.begin(),new ForwardLayer(-z,limits, thickness, negDetLayer));
+	// create and insert the layer on the positive side
+	forwardLayers_.emplace_back(new ForwardLayer(z,limits, thickness, posDetLayer));
+    
+	// try extracting the nuclear interaction thickness factor
+	double nuclearInteractionThicknessFactor = layerCfg.getUntrackedParameter<double>("nuclearInteractionThicknessFactor",-1);
+	if(nuclearInteractionThicknessFactor >= 0)
+	{
+	    forwardLayers_.front()->setNuclearInteractionThicknessFactor(nuclearInteractionThicknessFactor);
+	    forwardLayers_.back()->setNuclearInteractionThicknessFactor(nuclearInteractionThicknessFactor);
+	}
 
-        ForwardLayer flayerNeg(-z, limits, thickness, detLayers[1]);
-        if(pMF) flayerNeg.setMagneticField(*pMF, maxR);
-        if(flayerNeg.getDetLayer()) if(flayerNeg.getDetLayer()->subDetector() == GeomDetEnumerators::subDetGeom[GeomDetEnumerators::TEC])
-            flayerNeg.setNuclearInteractionThicknessFactor(1.2);
-
-        theNegForwardLayers.push_back(flayerNeg);     
-
-
-        // Check overall compatibility of forward dimensions
-        if(theForwardLayers.size() <= 1) continue;
-        //std::cout.precision(4);
-        const ForwardLayer Lout = theForwardLayers[theForwardLayers.size()-1];
-        const ForwardLayer Lin = theForwardLayers[theForwardLayers.size()-2];
-        if(Lout.getZ() < Lin.getZ())
-            throw cms::Exception("FastSimulation/Geometry ") 
-                << " WARNING with ForwardLayer number " << theForwardLayers.size() 
-                << " has z smaller than previous layer"<< std::endl
-                << " zOuter/zInner=" << Lout.getZ() << "/" << Lin.getZ() << std::endl;
+    }
+    
+    for(unsigned index = 0;index < forwardLayers_.size();index++)
+    {
+	forwardLayers_[index]->setIndex(index);
     }
 
-    // add negative and positive forward layers to one single vector
-    while(!theNegForwardLayers.empty()){
-        theForwardLayers.push_back(theNegForwardLayers.back());
-        theNegForwardLayers.pop_back();
-    }
-    theForwardLayers.insert(theForwardLayers.end(), thePosForwardLayers.begin(), thePosForwardLayers.end());
+}
 
+void fastsim::Geometry::setMagneticFieldZ(double magneticFieldZ)
+{
+    magneticField_ = 0;
+    magneticFieldZ_ = magneticFieldZ;
+    for(auto & layer : barrelLayers_)
+    {
+        layer->setMagneticFieldZ(magneticFieldZ);
+    }
+    for(auto & layer : forwardLayers_)
+    {
+        layer->setMagneticFieldZ(magneticFieldZ);
+    }
+}
+
+void fastsim::Geometry::setMagneticField(const MagneticField & magneticField)
+{
+    magneticField_ = &magneticField;
+    magneticFieldZ_ = 0;
+    /*
+      barrel layers
+    */
+    double maxZ = 0;
+    if(forwardLayers_.size() > 0)
+    {
+	forwardLayers_.back()->getZ();
+    }
+    for(auto & layer : barrelLayers_)
+    {
+        layer->setMagneticField(magneticField, maxZ);
+    }
+    
+    /*
+      forward layers
+    */
+    double maxR = 0;
+    if(barrelLayers_.size() > 0)
+    {
+	barrelLayers_.back()->getRadius();
+    }
+    for(auto & layer : forwardLayers_)
+    {
+        layer->setMagneticField(magneticField, maxR);
+    }
 }
 
 const DetLayer*
-Geometry::getBarrelDetLayer(std::string layerName, const GeometricSearchTracker& theGeomSearchTracker){
+Geometry::getBarrelDetLayer(std::string layerName, const GeometricSearchTracker * geometricSearchTracker)
+{
 
-    if(layerName.empty()) return 0;
-
-    const DetLayer *detLayer = 0;
-
-    if (layerName.substr(0,4)=="BPix"){
-        int index = std::atoi(layerName.substr(4,1).c_str()) -1;
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.pixelBarrelLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayer = *(theGeomSearchTracker.pixelBarrelLayers().begin() + index);
-    }else if (layerName.substr(0,3)=="TIB"){
-        int index = std::atoi(layerName.substr(3,1).c_str()) -1;
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.tibLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayer = *(theGeomSearchTracker.tibLayers().begin() + index);
-    }else if (layerName.substr(0,3)=="TOB"){
-        int index = std::atoi(layerName.substr(3,1).c_str()) -1;
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.tobLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayer = *(theGeomSearchTracker.tobLayers().begin() + index);
-    }
-    else{
-        throw cms::Exception("FastSimulation/Geometry")
-            << "Bad data naming in tracker layer configuration."
-            << "no case sensitive name of ['BPix','TIB',TOB'] matches '"<<layerName.c_str()<<"'";
+    if(!geometricSearchTracker || layerName.empty())
+    {
+	return 0;
     }
     
-    return detLayer;
+    std::map<std::string,const std::vector<BarrelDetLayer const *> *> detLayersMap;
+    detLayersMap["BPix"] = &geometricSearchTracker->pixelBarrelLayers();
+    detLayersMap["TIB"] = &geometricSearchTracker->tibLayers();
+    detLayersMap["TOB"] = &geometricSearchTracker->tobLayers();
+    for( auto & entry : detLayersMap)
+    {
+	std::string name_ = entry.first;
+	auto detLayers = entry.second;
+	if(layerName.find(name_)==0)
+	{
+	    int index = atoi(layerName.substr(name_.size()).c_str()) -1;
+	    if(index < 0. || index > int(detLayers->size()))
+	    {
+		throw cms::Exception("FastSimulation/Geometry") << " bad index in activeLayer name " <<  layerName;
+	    }
+	    return (*detLayers)[index];
+	}
+    }
+    throw cms::Exception("FastSimulation/Geometry") << " bad naming of active layer " << layerName << std::endl;
+}
+    
+
+const DetLayer*
+Geometry::getForwardDetLayer(std::string layerName, const GeometricSearchTracker * geometricSearchTracker)
+{
+    if(!geometricSearchTracker || layerName.empty())
+    {
+	return 0;
+    }
+
+    std::map<std::string,const std::vector<ForwardDetLayer const *> *> detLayersMap;
+    detLayersMap["negFPix"] = &geometricSearchTracker->negPixelForwardLayers();
+    detLayersMap["posFPix"] = &geometricSearchTracker->posPixelForwardLayers();
+    detLayersMap["negTID"] = &geometricSearchTracker->negTidLayers();
+    detLayersMap["posTID"] = &geometricSearchTracker->posTidLayers();
+    detLayersMap["negTEC"] = &geometricSearchTracker->negTecLayers();
+    detLayersMap["posTEC"] = &geometricSearchTracker->posTecLayers();
+
+    for( auto & entry : detLayersMap)
+    {
+	std::string name_ = entry.first;
+	auto detLayers = entry.second;
+	if(layerName.find(name_)==0)
+	{
+	    int index = atoi(layerName.substr(name_.size()).c_str()) -1;
+	    if(index < 0 || index > int(detLayers->size()))
+	    {
+		throw cms::Exception("FastSimulation/Geometry") << " bad index in activeLayer name " <<  layerName;
+	    }
+	    return (*detLayers)[index];
+	}
+    }
+    throw cms::Exception("FastSimulation/Geometry") << " bad naming of active layer " << layerName << std::endl;
 }
 
-std::vector<const DetLayer*>
-Geometry::getForwardDetLayers(std::string layerName, const GeometricSearchTracker& theGeomSearchTracker){
-
-    std::vector<const DetLayer*> detLayers(2, 0);
-
-    if(layerName.empty()) return detLayers;
-
-    if (layerName.substr(0,4)=="FPix"){
-        int index = std::atoi(layerName.substr(4,1).c_str()) -1;    
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.posPixelForwardLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayers.at(0) = *(theGeomSearchTracker.posPixelForwardLayers().begin() + index);
-        detLayers.at(1) = *(theGeomSearchTracker.negPixelForwardLayers().begin() + index);
-    }else if (layerName.substr(0,3)=="TID"){
-        int index = std::atoi(layerName.substr(3,1).c_str()) -1;
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.posTidLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayers.at(0) = *(theGeomSearchTracker.posTidLayers().begin() + index);
-        detLayers.at(1) = *(theGeomSearchTracker.negTidLayers().begin() + index);
-    }else if (layerName.substr(0,3)=="TEC"){
-        int index = std::atoi(layerName.substr(3,1).c_str()) -1;
-        if(index < 0) throw cms::Exception("FastSimulation/Geometry") << "No valid index in '" << layerName.c_str() << "'";
-        if(theGeomSearchTracker.posTecLayers().size() <= std::abs(index))
-            throw cms::Exception("FastSimulation/Geometry") << "Layer index out of range: '" << layerName.c_str() << "'";
-        detLayers.at(0) = *(theGeomSearchTracker.posTecLayers().begin() + index);
-        detLayers.at(1) = *(theGeomSearchTracker.negTecLayers().begin() + index);
+std::ostream& fastsim::operator << (std::ostream& os , const fastsim::Geometry & geometry)
+{
+    os << "-----------"
+       << "\n# fastsim::Geometry"
+       << "\n## BarrelLayers:";
+    for(const auto & layer : geometry.barrelLayers_)
+    {
+	os << "\n   " << *layer;
     }
-    else{
-        throw cms::Exception("FastSimulation/Geometry")
-            << "Bad data naming in tracker layer configuration."
-            << "no case sensitive name of ['FPix',TID','TEC'] matches '"<<layerName.c_str()<<"'";
+    os << "\n## ForwardLayers:";
+    for(const auto & layer : geometry.forwardLayers_)
+    {
+	os << "\n   " << *layer;
     }
-    
-    return detLayers;
+    os << "\n-----------";
+    return os;
+}
+
+double fastsim::Geometry::getMagneticFieldZ (const math::XYZTLorentzVector & position) const
+{
+    if(magneticField_)
+    {
+	return magneticField_->inTesla(GlobalPoint(position.x(),position.y(),position.z())).z();
+    }
+    else
+    {
+	return magneticFieldZ_;
+    }
 }

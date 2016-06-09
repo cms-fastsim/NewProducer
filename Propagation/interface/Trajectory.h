@@ -13,7 +13,7 @@ namespace fastsim
     class Trajectory
     {
     public:
-	static std::unique_ptr<Trajectory> createTrajectory(const RawParticle & particle,double magneticFieldZ);
+	static std::unique_ptr<Trajectory> createTrajectory(const RawParticle & particle,const double magneticFieldZ);
 	virtual bool crosses(const BarrelLayer & layer) const = 0;
 	virtual bool crossesMaterial(const ForwardLayer & layer) const = 0;
 	math::XYZTLorentzVectorD & getPosition(){return position_;}

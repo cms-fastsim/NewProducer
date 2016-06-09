@@ -2,7 +2,8 @@
 
 #include "vector"
 
-#include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
+
 #include "FastSimulation/Geometry/interface/Geometry.h"
 #include "FastSimulation/Geometry/interface/BarrelLayer.h"
 #include "FastSimulation/Geometry/interface/ForwardLayer.h"
@@ -54,130 +55,167 @@
 //       - for straight tracks, the optimal strategy to find the next layer might be very different
 **/
 
-const fastsim::Layer * fastsim::LayerNavigator::moveToNextLayer(RawParticle & particle,const Geometry & geometry,double magneticFieldZ) const
+const std::string fastsim::LayerNavigator::MESSAGECATEGORY = "FastSimulation";
+
+// TODO: check this std::move business
+fastsim::LayerNavigator::LayerNavigator(const int type,const XYZTLorentzVector & vertex,const XYZTLorentzVector& momentum,const fastsim::Geometry & geometry)
+    : initialized_(false)
+    , geometry_(&geometry)
+    , particle_(type,momentum)
+    , nextBarrelLayer_(0)
+    , nextForwardLayer_(0)
+    , currentLayer_(0)
 {
+    particle_.setVertex(vertex);
+}
 
+bool fastsim::LayerNavigator::moveToNextLayer()
+{
+    LogDebug(MESSAGECATEGORY) << "   moveToNextLayer called";
+
+    // magnetic field at the current position of the particle
+    double magneticFieldZ = currentLayer_ ? currentLayer_->getMagneticFieldZ(particle_.vertex()) : geometry_->getMagneticFieldZ(particle_.vertex());
+    LogDebug(MESSAGECATEGORY) << "   magnetic field z component:" << magneticFieldZ;
+
+    // particle moves inwards?
+    bool particleMovesInwards = particle_.px()*particle_.x() + particle_.py()*particle_.y() < 0;
+    
+    /*
+      update nextBarrelLayer and nextForwardLayer
+    */
+
+    // first time
+    if(!initialized_)
+    {
+	
+	LogDebug(MESSAGECATEGORY) << "      called for first time";
+
+	// only initialize once
+	initialized_ = true;
+	
+	/*
+	  find the narrowest barrel layers with
+	  layer.r > particle.r
+	  assume barrel layers are ordered with increasing r
+	*/
+	for(const auto & layer : geometry_->barrelLayers())
+	{
+	    if(particle_.r() < layer->getRadius() || (particleMovesInwards && particle_.r() == layer->getRadius()))
+	    {
+		nextBarrelLayer_ = layer.get();
+		break;
+	    }
+	}
+
+	/*
+	  find the forward layer with smallest z with
+	  layer.z > particle z
+	*/
+	for(const auto & layer : geometry_->forwardLayers())
+	{
+	    if(particle_.z() < layer->getZ() || (particle_.pz() < 0 && particle_.z() == layer->getZ()))
+	    {
+		nextForwardLayer_ = layer.get();
+		break;
+	    }
+	}
+    }
+    // last moveToNextLayer failed, so this one must fail again
+    else if(!currentLayer_)
+    {
+	LogDebug(MESSAGECATEGORY) << "      called while last call failed";
+	return false;
+    }
+    // last move worked, let's update
+    else
+    {
+	LogDebug(MESSAGECATEGORY) << "      ordinary call";
+	if(currentLayer_ == nextBarrelLayer_)
+	{
+	    if(!particleMovesInwards)
+	    {
+		nextBarrelLayer_ = geometry_->nextBarrelLayer(nextBarrelLayer_);
+	    }
+	}
+	else if(currentLayer_ == geometry_->previousBarrelLayer(nextBarrelLayer_))
+	{
+	    if(particleMovesInwards)
+	    {
+		nextBarrelLayer_ = geometry_->previousBarrelLayer(nextBarrelLayer_);
+	    }
+	}
+	else if(currentLayer_ == nextForwardLayer_)
+	{
+	    if(particle_.pz() > 0)
+	    {
+		nextForwardLayer_ = geometry_->nextForwardLayer(nextForwardLayer_);
+	    }
+	}
+	else if(currentLayer_ == geometry_->previousForwardLayer(nextForwardLayer_))
+	{
+	    if(particle_.pz() < 0)
+	    {
+		nextForwardLayer_ = geometry_->previousForwardLayer(nextForwardLayer_);
+	    }
+	}
+	currentLayer_ = 0;
+    }
+
+    /*
+      move particle to first hit with one of the enclosing layers
+    */
+    
+
+    LogDebug(MESSAGECATEGORY) << "   nextBarrelLayer index: " << (nextBarrelLayer_ ? nextBarrelLayer_->index() : -1)
+			      << "\n   nextForwardLayer index: " << (nextForwardLayer_ ? nextForwardLayer_->index() : -1);
+    
     // caclulate and store some variables related to the particle's trajectory
-    std::unique_ptr<fastsim::Trajectory> trajectory = Trajectory::createTrajectory(particle,magneticFieldZ);
+    std::unique_ptr<fastsim::Trajectory> trajectory = Trajectory::createTrajectory(particle_,magneticFieldZ);
     
-    /*
-      find the barrel layers that enclose the particle
-      i.e. closest barrel layers with 
-      - layer.r < particle.r  
-      - layer.r > particle.r
-      assume barrel layers are ordered with increasing r
-      only consider layers that are crossed by the trajectory
-      only consider layers that have material in the z range of the trajectory
-    */
-
-    // 
-    bool negativeRSpeed = particle.px()*particle.x() + particle.py()*particle.y() < 0;
-    auto innerBarrelLayer = geometry.barrelLayers().end();
-    auto outerBarrelLayer = geometry.barrelLayers().end();
-    for(auto layer = geometry.barrelLayers().begin(); layer != geometry.barrelLayers().end(); ++layer)
-    {
-	// only consider layers that have material beyond particle.z(), 
-	// (taking into account the direction of the particle)
-	if( (particle.pz() > 0 && particle.z() > layer->materialMaxAbsZ()) ||
-	    (particle.pz() < 0 && particle.z() < -layer->materialMaxAbsZ()))
-	{
-	    continue;
-	}
-	// only consier layers that are crossed by the particle
-	if(trajectory->crosses(*layer))
-	{
-	    continue;
-	}
-	if(particle.r() < layer->getRadius() || (negativeRSpeed && particle.r() <= layer->getRadius()))
-	{
-	    outerBarrelLayer = layer;
-	    break;
-	}
-	else
-	{
-	    innerBarrelLayer = layer;
-	}
-    }
-
-    /*
-      find the closest forward layer towards which the particle moves
-      only consider layers with material in the r-region of the trajectory
-      only consider layers that have material betweeen innerBarrel and outerBarrel
-    */
-    
-    auto forwardLayer = geometry.forwardLayers().end(); // iterator to next forward layer
-    if(particle.pz()!=0)
-    {
-	for(auto layer = geometry.forwardLayers().begin(); layer != geometry.forwardLayers().end() ; ++layer)
-	{
-	    // only consider layers that have material betweeen innerBarrel and outerBarrel
-	    if( (innerBarrelLayer != geometry.barrelLayers().end() && layer->getMaxMaterialR() < innerBarrelLayer->getRadius()) ||
-		(outerBarrelLayer != geometry.barrelLayers().end() && layer->getMinMaterialR() > outerBarrelLayer->getRadius()))
-	    {
-		continue;
-	    }
-	    //only consider layers with material in the r-region of the trajectory
-	    if(trajectory->crossesMaterial(*layer))
-	    {
-		continue;
-	    }
-	    if(particle.pz() < 0)  // case particle moves negative direction
-	    {
-		if(particle.z() <= layer->getZ())
-		{
-		    break;
-		}
-		else
-		{
-		    forwardLayer = layer;
-		}
-	    }
-	    else               // case particle moves positive direction
-	    {
-		if(particle.z() < layer->getZ())
-		{
-		    forwardLayer = layer;
-		    break;
-		}
-	    }
-	}
-    }
-    
-    /* 
-       find earliest intersection with time > particle.t
-    */
-    
+    // now let's try to move the particle to one of the enclosing layers
     std::vector<const fastsim::Layer*> layers;
-    layers.push_back(forwardLayer == geometry.forwardLayers().end() ? 0 : &(*forwardLayer));
-    const fastsim::Layer * crossedLayer = 0;
+    if(nextBarrelLayer_) 
+    {
+	layers.push_back(nextBarrelLayer_);
+    }
+    if(geometry_->previousBarrelLayer(nextBarrelLayer_))
+    {
+	layers.push_back(geometry_->previousBarrelLayer(nextBarrelLayer_));
+    }
+    if(nextForwardLayer_)
+    {
+	layers.push_back(nextForwardLayer_);
+    }
+    if(geometry_->previousForwardLayer(nextForwardLayer_))
+    {
+	layers.push_back(geometry_->previousForwardLayer(nextForwardLayer_));
+    }
+    
+    
     double deltaTime = -1;
     for(auto layer : layers)
     {
-	if(layer)
+	double tempDeltaTime = trajectory->nextCrossingTimeC(*layer);
+	LogDebug(MESSAGECATEGORY) << "   particle crosses layer " << *layer << " at time " << tempDeltaTime;
+	if(tempDeltaTime > 0 && (currentLayer_ == 0 || tempDeltaTime< deltaTime))
 	{
-	    double tempDeltaTime = trajectory->nextCrossingTimeC(*layer);
-	    if(tempDeltaTime > 0 && (crossedLayer == 0 || tempDeltaTime< deltaTime))
-	    {
-		crossedLayer = layer;
-		deltaTime = tempDeltaTime;
-	    }
+	    currentLayer_ = layer;
+	    deltaTime = tempDeltaTime;
 	}
     }
-
-    /* 
-       move particle in space, time and momentum
-    */
-    if(crossedLayer)
+    
+    // move particle in space, time and momentum
+    if(currentLayer_)
     {
 	trajectory->move(deltaTime);
-	particle.setVertex(trajectory->getPosition());
-	particle.SetXYZT(trajectory->getMomentum().Px(),trajectory->getMomentum().Py(),trajectory->getMomentum().Pz(),trajectory->getMomentum().E());
+	particle_.setVertex(trajectory->getPosition());
+	particle_.SetXYZT(trajectory->getMomentum().Px(),trajectory->getMomentum().Py(),trajectory->getMomentum().Pz(),trajectory->getMomentum().E());
+	LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *currentLayer_;
     }
 
-    /*
-      return the crossed layer
-      returning null pointer means it makes no sense to move the particle any further
-     */
-    return crossedLayer;
+    // return true / false if propagations succeeded /failed
+    LogDebug(MESSAGECATEGORY) << "    success: " << bool(currentLayer_);
+    return currentLayer_;
 }
 
+	

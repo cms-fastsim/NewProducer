@@ -27,9 +27,10 @@ GeometryESProducer::produce(const GeometryRecord & iRecord){
   edm::ESHandle<GeometricSearchTracker> theGeomSearchTracker;
   edm::ESHandle<MagneticField> theMagneticField;
   
-  iRecord.getRecord<TrackerRecoGeometryRecord>().get(_label, theGeomSearchTracker );
+  iRecord.getRecord<TrackerRecoGeometryRecord>().get(_label,theGeomSearchTracker );
   iRecord.getRecord<IdealMagneticFieldRecord>().get(theMagneticField );
-  _tracker = std::make_shared<Geometry>(theTrackerMaterial,*theGeomSearchTracker,&(*theMagneticField));
+  _tracker = std::make_shared<Geometry>(theTrackerMaterial,&(*theGeomSearchTracker));
+  _tracker->setMagneticField(*theMagneticField);
   return _tracker;
 
 }

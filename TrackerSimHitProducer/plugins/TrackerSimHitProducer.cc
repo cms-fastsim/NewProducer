@@ -11,6 +11,8 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/LuminosityBlock.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 // data formats
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
@@ -42,13 +44,20 @@ public:
 private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&) override;
+    void beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup);
 
     std::string alignmentLabel_;
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
     FSimEvent simEvent_;
     edm::ParameterSet detectorLayersCfg_;
-    //std::unique_ptr<MaterialEffects> materialEffects_;
+    bool makeSimHits_;
+    bool magneticFieldIsFixed_;
+    double magneticFieldZ_;
+    std::unique_ptr<fastsim::Geometry> geometry_;
+    static const std::string MESSAGECATEGORY;
 };
+
+const std::string TrackerSimHitProducer::MESSAGECATEGORY = "FastSimulation";
 
 //
 // constructors and destructor
@@ -58,10 +67,14 @@ TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
     , genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
     , simEvent_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
     , detectorLayersCfg_(iConfig.getParameter<edm::ParameterSet>("detectorLayers"))
+    , makeSimHits_(iConfig.getUntrackedParameter<bool>("makeSimHits",true))
+    , magneticFieldIsFixed_(iConfig.exists("magneticFieldZ"))
+    , magneticFieldZ_(magneticFieldIsFixed_ ? iConfig.getParameter<double>("magneticFieldZ") : 0)
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
     produces<edm::PSimHitContainer>("TrackerHits");
+    
     /*
     if(iConfig.exists("materialEffects"))
     {
@@ -71,10 +84,39 @@ TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
 }
 
 
+void TrackerSimHitProducer::beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup)
+{
+    const GeometricSearchTracker * geometricSearchTracker = 0;
+    if(makeSimHits_)
+    {
+	edm::ESHandle<GeometricSearchTracker> geometricSearchTrackerHandle;
+	iSetup.get<TrackerRecoGeometryRecord>().get(alignmentLabel_,geometricSearchTrackerHandle);
+	geometricSearchTracker = &(*geometricSearchTrackerHandle);
+    }
+    geometry_.reset(new fastsim::Geometry(detectorLayersCfg_,geometricSearchTracker));
+    
+
+    edm::ESHandle<MagneticField> magneticField;
+    if(!magneticFieldIsFixed_)
+    {
+	iSetup.get<IdealMagneticFieldRecord>().get(magneticField);
+	geometry_->setMagneticField(*magneticField);
+    }
+    else
+    {
+	geometry_->setMagneticFieldZ(magneticFieldZ_);
+    }
+    
+    LogDebug(MESSAGECATEGORY) << "Constructed geometry::\n" << *geometry_;
+    
+}   
+
 // ------------ method called to produce the data  ------------
 void
 TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
+    LogDebug(MESSAGECATEGORY) << "   produce";
+
     std::unique_ptr<edm::PSimHitContainer> output_simHits(new edm::PSimHitContainer);
     std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
     std::unique_ptr<edm::SimTrackContainer> TEMP(new edm::SimTrackContainer);
@@ -85,14 +127,6 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     simEvent_.initializePdt(&(*pdt));
     ParticleTable::Sentry ptable(&(*pdt));
 
-    edm::ESHandle<MagneticField> magneticField;
-    iSetup.get<IdealMagneticFieldRecord>().get(magneticField);
-    
-    edm::ESHandle<GeometricSearchTracker> geometricSearchTracker;
-    iSetup.get<TrackerRecoGeometryRecord>().get(alignmentLabel_,geometricSearchTracker);
-    
-    fastsim::Geometry geometry(detectorLayersCfg_,*geometricSearchTracker,&(*magneticField));
-    
     edm::Handle<edm::HepMCProduct> genParticles;
     iEvent.getByToken(genParticlesToken_,genParticles);
     
@@ -102,29 +136,29 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     edm::EventID eventId = iEvent.id();
     simEvent_.fill(*genParticles->GetEvent(),eventId);
     
-    fastsim::LayerNavigator layerNavigator;
-
     fastsim::TrackerSimHitFactory simHitFactory;
+
+    LogDebug(MESSAGECATEGORY) << "################################"
+			      << "\n###############################";
 
     for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
     {
+	    
 	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
 
-	// define a particle
-	RawParticle particle(simTrack.type(),simTrack.momentum());
-	particle.setVertex(simTrack.vertex().position());
-	// TODO: set the decay time
+	// initialise navigator, need to 
+	// TODO provide decay time as well
+	fastsim::LayerNavigator layerNavigator(simTrack.type(),simTrack.vertex().position(),simTrack.momentum(),*geometry_);
+	LogDebug(MESSAGECATEGORY) << "process particle:" << layerNavigator.particle() << std::endl;
 
-	// TODO: what is returned in case the particle decays before it hits a layer
-	//fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,geometry.getMagField().inTesla(
-	//		GlobalPoint(particle.vertex().position().x(), particle.vertex().position().y(), particle.vertex().position().z())).z()); // TODO: take magneticfield from 
-	const fastsim::Layer * layer = layerNavigator.moveToNextLayer(particle,geometry,3.8);// TODO: take magneticfield
-	while(layer != 0)
+	LogDebug(MESSAGECATEGORY) << "--------------------------------"
+				  << "\n-------------------------------";
+
+	while(layerNavigator.moveToNextLayer())
 	{
-	    // does it really make sense to retrieve the magnetic field from the layer?
-	    // is it much faster than getting it straight from the magnetic field?
-	    //double magneticFieldZ = layer.getMagneticFieldInTeslaZ(particle.vertex().position());
-	    double magneticFieldZ = 3.8;
+	    
+	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << layerNavigator.currentLayer()
+				      << "\n   new state:" << layerNavigator.particle();
 	    
 	    // do the material effects
 	    // commented out for now, cause it depends on the layer interface, which changes
@@ -135,6 +169,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    }
 	    */
 
+	    /*
 	    // create simhits
 	    if(layer->getDetLayer())
 	    {
@@ -144,10 +179,16 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 		// See MaterialEffects for more details
 		// The same applies to a charged particle decay into another charged particle.
 		// See ... for more details
-		if ( !simTrack.noMother() && simTrack.mother().closestDaughterId() == simTrackId )
-		    simTrackId = simTrack.mother().id();
-		simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->getDetLayer()),magneticFieldZ,*output_simHits);
+		if (makeSimHits_)
+		{
+		    if ( !simTrack.noMother() && simTrack.mother().closestDaughterId() == simTrackId )
+		    {
+			simTrackId = simTrack.mother().id();
+		    }
+		    simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->getDetLayer()),layer->getMagneticFieldInTeslaZ(particle.vertex()),*output_simHits);
+		}
 	    }
+	    */
 	    
 	    // kinematic cuts
 	    //if()
@@ -156,14 +197,18 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    //}
 
 	    // temporary: break after 25 ns
-	    if(particle.t() > 25)
+	    if(layerNavigator.particle().t() > 100)
 	    {
 		break;
 	    }
 
 	    // move to next layer
-	    layer = layerNavigator.moveToNextLayer(particle,geometry,magneticFieldZ);
+	    //layer = layerNavigator.moveToNextLayer(particle,*geometry_);
 	    
+
+	    LogDebug(MESSAGECATEGORY) << "--------------------------------"
+				      << "\n-------------------------------";
+
 	}
 
 	/*
@@ -175,13 +220,16 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	}
 	*/
 
+	LogDebug(MESSAGECATEGORY) << "################################"
+				  << "\n###############################";
     }
 
     simEvent_.load(*output_simTracks,*TEMP);
     simEvent_.load(*output_simVertices);
     iEvent.put(std::move(output_simTracks));
     iEvent.put(std::move(output_simVertices));
-    iEvent.put(std::move(output_simHits));
+    std::cout << output_simHits->size() << std::endl;
+    iEvent.put(std::move(output_simHits),"TrackerHits");
 }
 
 DEFINE_FWK_MODULE(TrackerSimHitProducer);

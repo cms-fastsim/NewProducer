@@ -17,21 +17,18 @@ TrackerMaterialBlock = cms.PSet(
                 radius = cms.untracked.double(4.425),
                 limits = cms.untracked.vdouble(0.0, 28.391),
                 thickness = cms.untracked.vdouble(0.0217),
-                activeLayer = cms.untracked.string("BPix1")
             ),
             #PIXB2
             cms.PSet(
                 radius = cms.untracked.double(7.312),
                 limits = cms.untracked.vdouble(0.0, 28.391),
                 thickness = cms.untracked.vdouble(0.0217),
-                activeLayer = cms.untracked.string("BPix2")
             ),
             #PIXB3
             cms.PSet(
                 radius = cms.untracked.double(10.177),
                 limits = cms.untracked.vdouble(0.0, 28.391),
                 thickness = cms.untracked.vdouble(0.0217),
-                activeLayer = cms.untracked.string("BPix3")
             ),
             ########### Pixel Outside walls and cables (barrel) ###########
             #PIXBOut5
@@ -46,28 +43,24 @@ TrackerMaterialBlock = cms.PSet(
                 radius = cms.untracked.double(25.767),
                 limits = cms.untracked.vdouble(0.0, 35.0, 65.254),
                 thickness = cms.untracked.vdouble(0.053, 0.0769),
-                activeLayer = cms.untracked.string("TIB1")
             ),
             #TIB2
             cms.PSet(
                 radius = cms.untracked.double(34.104),
                 limits = cms.untracked.vdouble(0.0, 35.0, 65.231),
                 thickness = cms.untracked.vdouble(0.053, 0.0769),
-                activeLayer = cms.untracked.string("TIB2")
             ),
             #TIB3
             cms.PSet(
                 radius = cms.untracked.double(41.974),
                 limits = cms.untracked.vdouble(0.0, 35.0, 66.232),
                 thickness = cms.untracked.vdouble(0.035, 0.0508),
-                activeLayer = cms.untracked.string("TIB3")
             ),
             #TIB4
             cms.PSet(
                 radius = cms.untracked.double(49.907),
                 limits = cms.untracked.vdouble(0.0, 35.0, 66.355),
                 thickness = cms.untracked.vdouble(0.04, 0.058),
-                activeLayer = cms.untracked.string("TIB4")
             ),
             ########### TOB inside wall (barrel) ###########
             #TOBCIn
@@ -82,42 +75,36 @@ TrackerMaterialBlock = cms.PSet(
                 radius = cms.untracked.double(60.937),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.021, 0.06, 0.03, 0.06, 0.03, 0.06),
-                activeLayer = cms.untracked.string("TOB1")
             ),
             #TOB2
             cms.PSet(
                 radius = cms.untracked.double(69.322),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.021, 0.06, 0.03, 0.06, 0.03, 0.06),
-                activeLayer = cms.untracked.string("TOB2")
             ),
             #TOB3
             cms.PSet(
                 radius = cms.untracked.double(+78.081),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
-                activeLayer = cms.untracked.string("TOB3")
             ),
             #TOB4
             cms.PSet(
                 radius = cms.untracked.double(86.786),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
-                activeLayer = cms.untracked.string("TOB4")
             ),
             #TOB5
             cms.PSet(
                 radius = cms.untracked.double(96.569),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
-                activeLayer = cms.untracked.string("TOB5")
             ),
             #TOB6
             cms.PSet(
                 radius = cms.untracked.double(108.063),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
-                activeLayer = cms.untracked.string("TOB6")
             ),
            
             ########### Tracker Outer Barrel Outside Cables and walls (barrel) ###########
@@ -148,13 +135,13 @@ TrackerMaterialBlock = cms.PSet(
             cms.PSet(
                 limits = cms.untracked.vdouble(4.825, 16.598),
                 thickness = cms.untracked.vdouble(0.058),
-                activeLayer = cms.untracked.string("FPix1")
+                z = cms.untracked.double(50)
             ),
             #PIXD2
             cms.PSet(
                 limits = cms.untracked.vdouble(4.823, 16.598),
                 thickness = cms.untracked.vdouble(0.058),
-                activeLayer = cms.untracked.string("FPix2")
+                z = cms.untracked.double(53)
             ),
             ########### Pixel Endcap outside cables ###########
             #PIXBOut6
@@ -175,19 +162,19 @@ TrackerMaterialBlock = cms.PSet(
             cms.PSet(
                 limits = cms.untracked.vdouble(0.0, 22.2, 34.0, 42.0, 53.940),
                 thickness = cms.untracked.vdouble(0.04, 0.08, 0.04, 0.04), #LV: just adding one entry to make it run
-                activeLayer = cms.untracked.string("TID1")
+                z = cms.untracked.double(80)
             ),
             #TID2
             cms.PSet(
                 limits = cms.untracked.vdouble(0.0, 22.2, 34.0, 42.0, 53.942), 
                 thickness = cms.untracked.vdouble(0.04, 0.08, 0.04, 0.04), #LV: just adding one entry to make it run
-                activeLayer = cms.untracked.string("TID2")
+                z = cms.untracked.double(85)
             ),
             #TID3
             cms.PSet(
                 limits = cms.untracked.vdouble(0.0, 22.2, 34.0, 42.0, 53.942), 
                 thickness = cms.untracked.vdouble(0.055, 0.110, 0.055, 0.04), #LV: just adding one entry to make it run
-                activeLayer = cms.untracked.string("TID3")
+                z = cms.untracked.double(90)
             ),
             ########### Tracker Inner Disks Outside Cables and walls (endcap) ###########
             #TIDEOut
@@ -208,63 +195,63 @@ TrackerMaterialBlock = cms.PSet(
             cms.PSet(
                 limits = cms.untracked.vdouble(21.87, 24.0, 34.0, 39.0, 111.395),
                 thickness = cms.untracked.vdouble(0.100, 0.040, 0.080, 0.050),
-                activeLayer = cms.untracked.string("TEC1"),
+                z = cms.untracked.double(120.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC2
             cms.PSet(
                 limits = cms.untracked.vdouble(21.87, 24.0, 34.0, 39.0, 111.395),
                 thickness = cms.untracked.vdouble(0.100, 0.040, 0.080, 0.050),
-                activeLayer = cms.untracked.string("TEC2"),
+                z = cms.untracked.double(125.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC3
             cms.PSet(
                 limits = cms.untracked.vdouble(21.87, 24.0, 34.0, 39.0, 111.395),
                 thickness = cms.untracked.vdouble(0.100, 0.040, 0.080, 0.050),
-                activeLayer = cms.untracked.string("TEC3"),
+                z = cms.untracked.double(130.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC4
             cms.PSet(
                 limits = cms.untracked.vdouble(29.62, 32.0, 40.0, 41.0, 46.0, 111.395),
                 thickness = cms.untracked.vdouble(0.115, 0.030, 0.050, 0.070, 0.050),
-                activeLayer = cms.untracked.string("TEC4"),
+                z = cms.untracked.double(135.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC5
             cms.PSet(
                 limits = cms.untracked.vdouble(29.62, 32.0, 40.0, 41.0, 46.0, 111.395),
                 thickness = cms.untracked.vdouble(0.115, 0.030, 0.050, 0.070, 0.050),
-                activeLayer = cms.untracked.string("TEC5"),
+                z = cms.untracked.double(140.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC6
             cms.PSet(
                 limits = cms.untracked.vdouble(29.62, 32.0, 40.0, 41.0, 46.0, 111.395),
                 thickness = cms.untracked.vdouble(0.125, 0.030, 0.050, 0.070, 0.050),
-                activeLayer = cms.untracked.string("TEC6"),
+                z = cms.untracked.double(145.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
             ),
             #TEC7
             cms.PSet(
                 limits = cms.untracked.vdouble(29.71, 32.0, 60.0, 111.395),
                 thickness = cms.untracked.vdouble(0.135, 0.030, 0.050),
-                activeLayer = cms.untracked.string("TEC7"),
+                z = cms.untracked.double(150.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
                 ),
             #TEC8
             cms.PSet(
                 limits = cms.untracked.vdouble(29.71, 32.0, 60.0, 111.395),
                 thickness = cms.untracked.vdouble(0.150, 0.030, 0.050),
-                activeLayer = cms.untracked.string("TEC8"),
+                z = cms.untracked.double(155.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
                 ),
             #TEC9
             cms.PSet(
                 limits = cms.untracked.vdouble(29.91, 32.0, 60.0, 111.395),
                 thickness = cms.untracked.vdouble(0.150, 0.030, 0.050),
-                activeLayer = cms.untracked.string("TEC9"),
+                z = cms.untracked.double(160.0),
                 nuclearInteractionThicknessFactor = cms.untracked.double(1.2)
                 ),
             ########### Tracker Endcaps Outside Cables and walls (endcaps) ###########
