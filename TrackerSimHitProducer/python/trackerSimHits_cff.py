@@ -5,10 +5,7 @@ from FastSimulation.Geometry.TrackerMaterial_Test_cfi import TrackerMaterialBloc
 
 trackerSimHits = cms.EDProducer(
     "TrackerSimHitProducer",
-    alignmentLabel = cms.string("MisAligned"),
     src = cms.InputTag("generatorSmeared"),
     particleFilter =  ParticleFilterBlock.ParticleFilter,
-    detectorLayers = TrackerMaterialBlock.TrackerMaterial,
-    makeSimHits = cms.untracked.bool(False),
-    magneticFieldZ = cms.double(0.)
+    detectorDefinition = TrackerMaterialBlock.TrackerMaterial,
     )

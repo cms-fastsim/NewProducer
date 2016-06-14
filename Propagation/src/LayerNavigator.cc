@@ -64,7 +64,7 @@ fastsim::LayerNavigator::LayerNavigator(const fastsim::Geometry & geometry)
     , nextForwardLayer_(0)
 {;}
 
-bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & particle,const fastsim::Layer * layer)
+bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & particle,const fastsim::Layer * & layer)
 {
     LogDebug(MESSAGECATEGORY) << "   moveToNextLayer called";
 
@@ -193,13 +193,13 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     }
     
     double deltaTime = -1;
-    for(auto layer : layers)
+    for(auto _layer : layers)
     {
-	double tempDeltaTime = trajectory->nextCrossingTimeC(*layer);
-	LogDebug(MESSAGECATEGORY) << "   particle crosses layer " << *layer << " at time " << tempDeltaTime;
+	double tempDeltaTime = trajectory->nextCrossingTimeC(*_layer);
+	LogDebug(MESSAGECATEGORY) << "   particle crosses layer " << *_layer << " at time " << tempDeltaTime;
 	if(tempDeltaTime > 0 && (layer == 0 || tempDeltaTime< deltaTime))
 	{
-	    layer = layer;
+	    layer = _layer;
 	    deltaTime = tempDeltaTime;
 	}
     }

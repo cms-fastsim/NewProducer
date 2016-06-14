@@ -60,6 +60,7 @@ TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
+    produces<std::vector<math::XYZTLorentzVector> >();
 }
 
 
@@ -111,12 +112,15 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
 	// move the particle through the layers
 	fastsim::LayerNavigator layerNavigator(*detector_);
-	fastsim::Layer * layer = 0;
+	const fastsim::Layer * layer = 0;
 	while(layerNavigator.moveParticleToNextLayer(particle,layer))
 	{
-	    
-	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << layer
-				      << "\n   new state:" << particle;
+
+	    if(layer)
+	    {
+		LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer;
+	    }
+	    LogDebug(MESSAGECATEGORY) << "\n   new state:" << particle;
 	    
 	    // perform interaction between layer and particle
 	    LogDebug(MESSAGECATEGORY) << "   performing interactions. " << layer->getInteractionModels().size() << " interactionModels for this layer";

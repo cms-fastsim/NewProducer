@@ -14,7 +14,8 @@ namespace fastsim
     {
     public:
 	LayerNavigator(const Geometry & geometry);
-	bool moveParticleToNextLayer(Particle & particle,const Layer * layer);
+	// TODO: make the layer const
+	bool moveParticleToNextLayer(Particle & particle,const Layer * & layer);
     private:
 	const Geometry * const geometry_;
 	const BarrelLayer * nextBarrelLayer_;
