@@ -1,7 +1,7 @@
 #include "FastSimulation/Propagation/interface/HelixTrajectory.h"
-#include "FastSimulation/Geometry/interface/BarrelLayer.h"
-#include "FastSimulation/Geometry/interface/ForwardLayer.h"
-#include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "FastSimulation/NewParticle/interface/Particle.h"
 #include <math.h>
 
 // helix phi definition
@@ -9,7 +9,7 @@
 // PI corresponds to the positive x direction
 // PI increases counterclockwise
 
-fastsim::HelixTrajectory::HelixTrajectory(const RawParticle & particle,double magneticFieldZ)
+fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,double magneticFieldZ)
     : Trajectory(particle)
     , radius_( abs(momentum_.Pt() / ( speedOfLight_ * 1e-4 * magneticFieldZ * particle.charge() )))
     , phi0_(std::atan2(momentum_.Px(),momentum_.Py()) - (momentum_.Px() > 0 || momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ))  // something wrong here, should depend on direction of magnetic field and charge!
@@ -73,6 +73,14 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     //
     // TODO: try to find the solution with less operations
     // SIMON: I would have done it the same way. There is nothing else I can think of. Maybe use centerR_^2 instead of centerX_*centerX_ + centerY_*centerY_
+
+    // TODO: if the particle is already on the layer,
+    // we need to make sure the 2nd solution is picked.
+    if(layer.isOnSurface(position_))
+    {
+	std::cout << "WARNING: I'm not ready for this!!!" << std::endl
+		  << "         Need to return the next crossing, not the current one" << std::endl;
+    }
 
     double E = centerX_*centerX_ + centerY_*centerY_ + radius_*radius_ - layer.getRadius()*layer.getRadius();
     double F = 2*centerY_*radius_;

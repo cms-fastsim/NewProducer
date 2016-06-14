@@ -1,7 +1,7 @@
 #ifndef FASTSIM_FORWARDLAYER_H
 #define FASTSIM_FORWARDLAYER_H
 
-#include "FastSimulation/Geometry/interface/Layer.h"
+#include "FastSimulation/Layer/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
@@ -25,11 +25,11 @@ namespace fastsim{
 
 	    for(int i = 0; i <= 101; i++)
 	    {
-		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(field->GetXaxis()->GetBinCenter(i), 0., position)).z());
+		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(field->GetXaxis()->GetBinCenter(i), 0., position_)).z());
 	    }
 	}
 
-			const double getZ() const { return position; }
+			const double getZ() const { return position_; }
 
 			const double getMinMaterialR() const { return minMaterial; }
 			const double getMaxMaterialR() const { return maxMaterial; }
@@ -46,7 +46,12 @@ namespace fastsim{
 	    return Layer::getMagneticFieldZ(pos.rho());
 	}
 	
-			bool isForward() const override {return true;}
+	bool isForward() const override {return true;}
+	
+	bool isOnSurface(const math::XYZTLorentzVectorD & position) const override
+	{
+	    return fabs(position_ - position.z()) < epsilonDistance_;
+	}
 
     };
 

@@ -4,14 +4,12 @@
 
 #include "FastSimulation/Propagation/interface/Trajectory.h"
 
-class RawParticle;
-
 namespace fastsim
 {
     class HelixTrajectory : public Trajectory
     {
     public:
-	HelixTrajectory(const RawParticle & particle,double magneticFieldZ);
+	HelixTrajectory(const Particle & particle,double magneticFieldZ);
 	bool crosses(const BarrelLayer & layer) const override;
 	bool crossesMaterial(const ForwardLayer & layer) const override;
 	double nextCrossingTimeC(const BarrelLayer & layer) const override;

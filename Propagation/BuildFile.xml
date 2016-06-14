@@ -1,5 +1,5 @@
 <use name="FastSimulation/Geometry"/>
-<use name="FastSimulation/Particle"/>
+<use name="FastSimulation/NewParticle"/>
 <export>
   <lib   name="1"/>
 </export>

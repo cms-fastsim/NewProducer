@@ -1,11 +1,16 @@
 #include "FastSimulation/Propagation/interface/StraightTrajectory.h"
 
-#include "FastSimulation/Geometry/interface/Layer.h"
-#include "FastSimulation/Geometry/interface/BarrelLayer.h"
-#include "FastSimulation/Geometry/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/Layer.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
 
 double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer & layer) const
 {
+    if(layer.isOnSurface(position_))
+    {
+	return -1;
+    }
+
     //
     // solve the equation
     // (x^2 + y^2 = R^2),   (1)

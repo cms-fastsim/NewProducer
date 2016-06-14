@@ -1,8 +1,8 @@
 #ifndef FASTSIM_GEOMETRY_H
 #define FASTSIM_GEOMETRY_H
 
-#include "FastSimulation/Geometry/interface/BarrelLayer.h"
-#include "FastSimulation/Geometry/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
 
 class GeometricSearchTracker;
 class MagneticField;
@@ -11,24 +11,20 @@ class MagneticField;
 
 namespace edm { 
     class ParameterSet;
+    class ProducerBase;
+    class EventSetup;
 }
 
 namespace fastsim{
-
+    class InteractionModel;
     class Geometry
     {
     public:
-	/// Constructor : get the configurable parameters
-	Geometry(const edm::ParameterSet& trackerMaterial,
-		 const GeometricSearchTracker * geomSearchTracker);
-
-
-	/// set magnetic field
-	void setMagneticField(const MagneticField & magneticField);
-	void setMagneticFieldZ(double magneticFieldZ);
+	/// Constructor
+	Geometry(const edm::ParameterSet& cfg,const edm::EventSetup & iSetup);
 
 	/// Destructor
-	~Geometry(){};
+	~Geometry();
 
 	// Returns the magnetic field
 	double getMagneticFieldZ(const math::XYZTLorentzVector & position) const;
@@ -77,8 +73,13 @@ namespace fastsim{
 	    return layer->index() > 0 ? forwardLayers_[layer->index() -1].get() : 0;
 	}
 
+	std::vector<InteractionModel*> getInteractionModels() {return interactionModelVector_;}
 
     private:
+
+	/// set magnetic field
+	void setMagneticField(const MagneticField & magneticField);
+	void setMagneticFieldZ(double magneticFieldZ);
 
 	const DetLayer * getBarrelDetLayer(std::string layerName, const GeometricSearchTracker * theGeomSearchTracker);
 	const DetLayer * getForwardDetLayer(std::string layerName, const GeometricSearchTracker * theGeomSearchTracker);
@@ -89,7 +90,9 @@ namespace fastsim{
 
 	// Pointer to the magnetic field
 	const MagneticField * magneticField_;	
-	double magneticFieldZ_;
+	double fixedMagneticFieldZ_;
+	std::map<std::string,std::unique_ptr<InteractionModel> > interactionModels_;
+	std::vector<InteractionModel*> interactionModelVector_;
     };
     std::ostream& operator << (std::ostream& os , const fastsim::Geometry & geometry);
 }

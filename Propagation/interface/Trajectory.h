@@ -3,17 +3,17 @@
 
 #include "memory"
 #include "DataFormats/Math/interface/LorentzVector.h"
-class RawParticle;
 
 namespace fastsim
 {
     class Layer;
     class BarrelLayer;
     class ForwardLayer;
+    class Particle;
     class Trajectory
     {
     public:
-	static std::unique_ptr<Trajectory> createTrajectory(const RawParticle & particle,const double magneticFieldZ);
+	static std::unique_ptr<Trajectory> createTrajectory(const fastsim::Particle & particle,const double magneticFieldZ);
 	virtual bool crosses(const BarrelLayer & layer) const = 0;
 	virtual bool crossesMaterial(const ForwardLayer & layer) const = 0;
 	math::XYZTLorentzVectorD & getPosition(){return position_;}
@@ -23,10 +23,11 @@ namespace fastsim
 	virtual double nextCrossingTimeC(const BarrelLayer & layer) const = 0;
 	virtual void move(double deltaTC) = 0;
     protected:
-	Trajectory(const RawParticle & particle);
+	Trajectory(const fastsim::Particle & particle);
 	math::XYZTLorentzVectorD position_;
 	math::XYZTLorentzVectorD momentum_;
 	static const double speedOfLight_; // in cm / ns
+	static const double epsiloneTimeC_;
 	// consider storing particle mass, as it is needed frequently
     };
 }

@@ -14,19 +14,14 @@ class DetLayer;
 
 namespace fastsim{
 
+    class InteractionModel;
     class Layer
     {
     public:
 	virtual ~Layer(){};
 
-	// a move constructor
-	Layer (Layer && layer)
-	    : position(layer.position)
-	    , field(std::move(layer.field))
-	{}
-
 	Layer(double pos, const std::vector<double> & li, const std::vector<double> & th, const DetLayer* dL) 
-	    : position(pos)
+	    : position_(pos)
 	    , magneticFieldZ_(0)
 	    , nuclearInteractionThicknessFactor(0)
 	    , detLayer(dL)
@@ -100,9 +95,21 @@ namespace fastsim{
 
 	friend std::ostream& operator << (std::ostream& os , const Layer & layer);
 
+	virtual bool isOnSurface(const math::XYZTLorentzVector & position) const = 0;
+
+	const std::vector<InteractionModel *> & getInteractionModels() const
+	{
+	    return interactionModels_;
+	}
+
+	void addInteractionModel(InteractionModel & interactionModel)
+	{
+	    interactionModels_.push_back(&interactionModel);
+	}
+
     protected:
 	// position is either r (barrelLayer) or z (forwardLayer)
-	double position;
+	double position_;
 	double magneticFieldZ_;
 	double nuclearInteractionThicknessFactor;
 	const DetLayer * detLayer;
@@ -113,7 +120,9 @@ namespace fastsim{
 	TH1F thickness;
 	std::unique_ptr<TH1F> field;
 	
-	
+	static const double epsilonDistance_;
+
+	std::vector<InteractionModel *> interactionModels_;
 
     };
 

@@ -1,7 +1,7 @@
 #ifndef FASTSIM_BARRELLAYER_H
 #define FASTSIM_BARRELLAYER_H
 
-#include "FastSimulation/Geometry/interface/Layer.h"
+#include "FastSimulation/Layer/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
@@ -24,11 +24,11 @@ namespace fastsim{
 	    field->SetDirectory(0);
 	    for(int i = 0; i <= 101; i++)
 	    {
-		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(position, 0., field->GetXaxis()->GetBinCenter(i))).z());
+		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(position_, 0., field->GetXaxis()->GetBinCenter(i))).z());
 	    }
 	}
 
-			const double getRadius() const { return position; }
+			const double getRadius() const { return position_; }
 
 			const double materialMaxAbsZ() const { return maxMaterial; }
 
@@ -42,8 +42,16 @@ namespace fastsim{
 	    return Layer::getMagneticFieldZ(fabs(pos.z()));
 	}
 
-	        bool isForward() const override { return false;}
-	};
+	bool isForward() const override 
+	{ 
+	    return false;
+	}
+
+	bool isOnSurface(const math::XYZTLorentzVector & position) const override
+	{
+	    return fabs(position_ - position.rho()) < epsilonDistance_;
+	}
+    };
 
 }
 

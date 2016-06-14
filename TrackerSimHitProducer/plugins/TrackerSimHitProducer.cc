@@ -20,20 +20,15 @@
 #include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
 #include "DataFormats/Common/interface/Handle.h"
 
-// geometry
-#include "RecoTracker/Record/interface/TrackerRecoGeometryRecord.h"
-#include "MagneticField/Engine/interface/MagneticField.h"
-#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
-
 // fastsim
 #include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
 #include "FastSimulation/Event/interface/FSimEvent.h"
 #include "FastSimulation/Geometry/interface/Geometry.h"
-#include "FastSimulation/Geometry/interface/Layer.h"
+#include "FastSimulation/Layer/interface/Layer.h"
 #include "FastSimulation/Propagation/interface/LayerNavigator.h"
-#include "FastSimulation/TrackerSimHitProducer/interface/TrackerSimHitFactory.h"
-#include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Particle/interface/ParticleTable.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModel.h"
 
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
 public:
@@ -44,16 +39,12 @@ public:
 private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&) override;
-    void beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup);
+    void beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup) override;
 
-    std::string alignmentLabel_;
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
     FSimEvent simEvent_;
-    edm::ParameterSet detectorLayersCfg_;
-    bool makeSimHits_;
-    bool magneticFieldIsFixed_;
-    double magneticFieldZ_;
-    std::unique_ptr<fastsim::Geometry> geometry_;
+    edm::ParameterSet detectorDefinitionCfg_;
+    std::unique_ptr<fastsim::Geometry> detector_;
     static const std::string MESSAGECATEGORY;
 };
 
@@ -63,53 +54,25 @@ const std::string TrackerSimHitProducer::MESSAGECATEGORY = "FastSimulation";
 // constructors and destructor
 //
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
-    : alignmentLabel_(iConfig.getParameter<std::string>("alignmentLabel"))
-    , genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
+    : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
     , simEvent_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
-    , detectorLayersCfg_(iConfig.getParameter<edm::ParameterSet>("detectorLayers"))
-    , makeSimHits_(iConfig.getUntrackedParameter<bool>("makeSimHits",true))
-    , magneticFieldIsFixed_(iConfig.exists("magneticFieldZ"))
-    , magneticFieldZ_(magneticFieldIsFixed_ ? iConfig.getParameter<double>("magneticFieldZ") : 0)
+    , detectorDefinitionCfg_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
-    produces<edm::PSimHitContainer>("TrackerHits");
-    
-    /*
-    if(iConfig.exists("materialEffects"))
-    {
-	materialEffects_.reset(new MaterialEffects(iConfig.getParameter<edm::ParameterSet>("MaterialEffects")));
-    }
-    */
 }
 
 
 void TrackerSimHitProducer::beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup)
 {
-    const GeometricSearchTracker * geometricSearchTracker = 0;
-    if(makeSimHits_)
+    detector_.reset(new fastsim::Geometry(detectorDefinitionCfg_,iSetup));
+    for(const fastsim::InteractionModel * interactionModel : detector_->getInteractionModels())
     {
-	edm::ESHandle<GeometricSearchTracker> geometricSearchTrackerHandle;
-	iSetup.get<TrackerRecoGeometryRecord>().get(alignmentLabel_,geometricSearchTrackerHandle);
-	geometricSearchTracker = &(*geometricSearchTrackerHandle);
+	interactionModel->registerProducts(*this);
     }
-    geometry_.reset(new fastsim::Geometry(detectorLayersCfg_,geometricSearchTracker));
-    
-
-    edm::ESHandle<MagneticField> magneticField;
-    if(!magneticFieldIsFixed_)
-    {
-	iSetup.get<IdealMagneticFieldRecord>().get(magneticField);
-	geometry_->setMagneticField(*magneticField);
-    }
-    else
-    {
-	geometry_->setMagneticFieldZ(magneticFieldZ_);
-    }
-    
-    LogDebug(MESSAGECATEGORY) << "Constructed geometry::\n" << *geometry_;
-    
-}   
+    LogDebug(MESSAGECATEGORY) << "Constructed geometry::\n" << *detector_;
+}
+   
 
 // ------------ method called to produce the data  ------------
 void
@@ -117,9 +80,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 {
     LogDebug(MESSAGECATEGORY) << "   produce";
 
-    std::unique_ptr<edm::PSimHitContainer> output_simHits(new edm::PSimHitContainer);
     std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
-    std::unique_ptr<edm::SimTrackContainer> TEMP(new edm::SimTrackContainer);
     std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::SimVertexContainer);
 
     edm::ESHandle < HepPDT::ParticleDataTable > pdt;
@@ -129,107 +90,77 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
     edm::Handle<edm::HepMCProduct> genParticles;
     iEvent.getByToken(genParticlesToken_,genParticles);
-    
+
+    // ?? is this the right place ??
     RandomEngineAndDistribution random(iEvent.streamID());
 
     simEvent_.clear();
     edm::EventID eventId = iEvent.id();
     simEvent_.fill(*genParticles->GetEvent(),eventId);
     
-    fastsim::TrackerSimHitFactory simHitFactory;
-
+    // loop over particles
     LogDebug(MESSAGECATEGORY) << "################################"
-			      << "\n###############################";
-
+			      << "\n###############################";    
     for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
     {
-	    
+	// reference to simtrack
 	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
 
-	// initialise navigator, need to 
-	// TODO provide decay time as well
-	fastsim::LayerNavigator layerNavigator(simTrack.type(),simTrack.vertex().position(),simTrack.momentum(),*geometry_);
-	LogDebug(MESSAGECATEGORY) << "process particle:" << layerNavigator.particle() << std::endl;
+	// create particle for propagation, material interactions, decays...
+	fastsim::Particle particle(simTrack.type(),simTrack.charge(),simTrack.vertex().position(),simTrack.momentum(),simTrack.decayTime());
 
-	LogDebug(MESSAGECATEGORY) << "--------------------------------"
-				  << "\n-------------------------------";
-
-	while(layerNavigator.moveToNextLayer())
+	// move the particle through the layers
+	fastsim::LayerNavigator layerNavigator(*detector_);
+	fastsim::Layer * layer = 0;
+	while(layerNavigator.moveParticleToNextLayer(particle,layer))
 	{
 	    
-	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << layerNavigator.currentLayer()
-				      << "\n   new state:" << layerNavigator.particle();
+	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << layer
+				      << "\n   new state:" << particle;
 	    
-	    // do the material effects
-	    // commented out for now, cause it depends on the layer interface, which changes
-	    /*
-	    if(materialEffects_)
+	    // perform interaction between layer and particle
+	    LogDebug(MESSAGECATEGORY) << "   performing interactions. " << layer->getInteractionModels().size() << " interactionModels for this layer";
+	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
 	    {
-		materialEffects_->interact(simEvent_,*layer,particle,simTrackIndex,&random);
+		interactionModel->interact(particle,*layer,simEvent_);
 	    }
-	    */
 
-	    /*
-	    // create simhits
-	    if(layer->getDetLayer())
-	    {
-		// associate hits to simTrack
-		int simTrackId = simTrackIndex;
-		// If a hadron suffered a nuclear interaction, associate hits of the closest daughter to the mother's track.
-		// See MaterialEffects for more details
-		// The same applies to a charged particle decay into another charged particle.
-		// See ... for more details
-		if (makeSimHits_)
-		{
-		    if ( !simTrack.noMother() && simTrack.mother().closestDaughterId() == simTrackId )
-		    {
-			simTrackId = simTrack.mother().id();
-		    }
-		    simHitFactory.createHitsOnDetLayer(particle,simTrackId,*(layer->getDetLayer()),layer->getMagneticFieldInTeslaZ(particle.vertex()),*output_simHits);
-		}
-	    }
-	    */
-	    
 	    // kinematic cuts
-	    //if()
-	    //{
-	    //break;
-	    //}
-
-	    // temporary: break after 25 ns
-	    if(layerNavigator.particle().t() > 100)
+	    // temporary: break after 100 ns
+	    if(particle.position().t() > 100)
 	    {
 		break;
 	    }
-
-	    // move to next layer
-	    //layer = layerNavigator.moveToNextLayer(particle,*geometry_);
 	    
-
 	    LogDebug(MESSAGECATEGORY) << "--------------------------------"
 				      << "\n-------------------------------";
 
 	}
 
+	// do decays
 	/*
-	// do decays, if needed
-	if()
-	{
-	    //...;
-	    // add decay vertex, add daughters, and break
-	}
+	  if(particle.decayed())
+	  {
+	  // perform decay
+	  }
 	*/
 
 	LogDebug(MESSAGECATEGORY) << "################################"
 				  << "\n###############################";
     }
 
+    // store simHits and simTracks
+    // TODO: get rid of this TEMP
+    std::unique_ptr<edm::SimTrackContainer> TEMP(new edm::SimTrackContainer);
     simEvent_.load(*output_simTracks,*TEMP);
     simEvent_.load(*output_simVertices);
     iEvent.put(std::move(output_simTracks));
     iEvent.put(std::move(output_simVertices));
-    std::cout << output_simHits->size() << std::endl;
-    iEvent.put(std::move(output_simHits),"TrackerHits");
+    // store products of interaction models, i.e. simHits
+    for(fastsim::InteractionModel * interactionModel : detector_->getInteractionModels())
+    {
+	interactionModel->storeProducts(iEvent);
+    }
 }
 
 DEFINE_FWK_MODULE(TrackerSimHitProducer);

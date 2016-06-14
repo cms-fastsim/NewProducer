@@ -1,20 +1,19 @@
 #include "FastSimulation/Propagation/interface/StraightTrajectory.h"
 #include "FastSimulation/Propagation/interface/HelixTrajectory.h"
-#include "FastSimulation/Geometry/interface/ForwardLayer.h"
-#include "FastSimulation/Geometry/interface/BarrelLayer.h"
-#include "FastSimulation/Particle/interface/RawParticle.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
+#include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
-const double fastsim::Trajectory::speedOfLight_ = 29.98; // cm per ns
+const double fastsim::Trajectory::speedOfLight_ = 29.98; // [cm per ns]
 
-fastsim::Trajectory::Trajectory(const RawParticle & particle)
+fastsim::Trajectory::Trajectory(const fastsim::Particle & particle)
 {
-    position_ = particle.vertex();
-    momentum_ = particle;
+    position_ = particle.position();
+    momentum_ = particle.momentum();
 }
 
-
-std::unique_ptr<fastsim::Trajectory> fastsim::Trajectory::createTrajectory(const RawParticle & particle,double magneticFieldZ)
+std::unique_ptr<fastsim::Trajectory> fastsim::Trajectory::createTrajectory(const fastsim::Particle & particle,double magneticFieldZ)
 {
     if(particle.charge() == 0. || magneticFieldZ == 0.)
     {
@@ -44,6 +43,11 @@ double fastsim::Trajectory::nextCrossingTimeC(const fastsim::Layer & layer) cons
 
 double fastsim::Trajectory::nextCrossingTimeC(const fastsim::ForwardLayer & layer) const
 {
+    if(layer.isOnSurface(position_))
+    {
+	return -1;
+    }
+
     // t = (z - z_0) / v_z
     // substitute: v_z = p_z / E * c  ( note: extra * c absorbed in p_z units)
     // => t*c = (z - z_0) / p_z * E
