@@ -13,7 +13,7 @@ USER_CXXFLAGS="-g -D=EDM_ML_DEBUG" scram b -j 8 # special flags to switch on deb
 # create a file with generated events
 source FastSimulation/TrackerSimHitProducer/test/gen.sh
 # pass the generated events to simulation
-source FastSimulation/TrackerSimHitProducer/python/conf_cfg.py
+cmsRun FastSimulation/TrackerSimHitProducer/python/conf_cfg.py
 ```
 
 # More info on the project
