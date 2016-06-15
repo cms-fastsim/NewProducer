@@ -2,7 +2,6 @@
 #define FASTSIM_LAYER_H
 
 #include "FWCore/Utilities/interface/Exception.h"
-#include "DataFormats/Math/interface/LorentzVector.h"
 
 #include <memory>
 #include <vector>
@@ -11,6 +10,7 @@
 class DetLayer;
 class MagneticField;
 class DetLayer;
+class TLorentzVector;
 
 namespace fastsim{
 
@@ -76,7 +76,7 @@ namespace fastsim{
 
 	// Getters
 	int index() const {return index_;}
-	virtual const double getThickness(const math::XYZTLorentzVector& pos, const math::XYZTLorentzVector& mom) const = 0;
+	virtual const double getThickness(const TLorentzVector & pos, const TLorentzVector & mom) const = 0;
 	const double getNuclearInteractionThicknessFactor() const {return nuclearInteractionThicknessFactor; }
 	const DetLayer* getDetLayer(double z = 0) const { return detLayer; }
 	const double getMagneticFieldZ(double pos) const
@@ -90,12 +90,12 @@ namespace fastsim{
 		return magneticFieldZ_;
 	    }
 	}
-	virtual const double getMagneticFieldZ(math::XYZTLorentzVector pos) const = 0;
+	virtual const double getMagneticFieldZ(const TLorentzVector & pos) const = 0;
 	virtual bool isForward() const = 0;
 
 	friend std::ostream& operator << (std::ostream& os , const Layer & layer);
 
-	virtual bool isOnSurface(const math::XYZTLorentzVector & position) const = 0;
+	virtual bool isOnSurface(const TLorentzVector & position) const = 0;
 
 	const std::vector<InteractionModel *> & getInteractionModels() const
 	{

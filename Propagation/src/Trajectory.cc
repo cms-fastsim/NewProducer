@@ -5,6 +5,7 @@
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
+
 const double fastsim::Trajectory::speedOfLight_ = 29.98; // [cm per ns]
 
 fastsim::Trajectory::Trajectory(const fastsim::Particle & particle)
@@ -51,7 +52,7 @@ double fastsim::Trajectory::nextCrossingTimeC(const fastsim::ForwardLayer & laye
     // t = (z - z_0) / v_z
     // substitute: v_z = p_z / E * c  ( note: extra * c absorbed in p_z units)
     // => t*c = (z - z_0) / p_z * E
-    double deltaTimeC = (layer.getZ() - position_.z()) / momentum_.pz() * momentum_.E();
+    double deltaTimeC = (layer.getZ() - position_.Z()) / momentum_.Z() * momentum_.E();
     return deltaTimeC > 0. ? deltaTimeC : -1.;
 }
 

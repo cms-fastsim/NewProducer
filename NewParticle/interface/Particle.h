@@ -1,7 +1,7 @@
 #ifndef FASTSIM_PARTCILE_H
 #define FASTSIM_PARTICLE_H
 
-#include "DataFormats/Math/interface/LorentzVector.h"
+#include "TLorentzVector.h"
 
 namespace fastsim
 {
@@ -10,47 +10,42 @@ namespace fastsim
     public:
 	Particle(int pdgId,
 		 double charge,
-		 const math::XYZTLorentzVector & position,
-		 const math::XYZTLorentzVector & momentum,
-		 double properLifeTime)
+		 const TLorentzVector & position,
+		 const TLorentzVector & momentum,
+		 double properLifeTime = -1.)
 	    : pdgId_(pdgId)
 	    , charge_(charge)
-	    , position_(position)
-	    , momentum_(momentum)
+	    , position_(std::move(position))
+	    , momentum_(std::move(momentum))
 	    , properLifeTime_(properLifeTime)
 	    {;}
-	
+
 	int pdgId() const {return pdgId_;}
         double charge() const {return charge_;}
-	const math::XYZTLorentzVector & position() const {return position_;}
-	const math::XYZTLorentzVector & momentum() const {return momentum_;}
+	const TLorentzVector & position() const {return position_;}
+	const TLorentzVector & momentum() const {return momentum_;}
 	double properLifeTime() const {return properLifeTime_;}
-	double properTimeLeftBeforeDecay() const {return properTimeLeftBeforeDecay_;}
+	double remainingProperLifeTime() const {return remainingProperLifeTime_;}
 	
-	void setPosition(const math::XYZTLorentzVector & position)
-	{
-	    position_ = position;
-	}
+	TLorentzVector & position() {return position_;}
+	TLorentzVector & momentum() {return momentum_;}
 
-	void setMomentum(const math::XYZTLorentzVector & momentum)
-	{
-	    momentum_ = momentum;
-	}
-
+	/*
 	void advanceProperTime(double time)
 	{
-	    properTimeLeftBeforeDecay_ -= time;
+	    properLifeTimeLeft_ -= time;
 	}
+	*/
 
 	friend std::ostream& operator << (std::ostream& os , const Particle & particle);
 
     private:
 	const int pdgId_;
 	const double charge_;
-	math::XYZTLorentzVector position_;
-	math::XYZTLorentzVector momentum_;
+	TLorentzVector position_;
+	TLorentzVector momentum_;
 	const double properLifeTime_;
-	double properTimeLeftBeforeDecay_;
+	double remainingProperLifeTime_;
     };
 
     std::ostream& operator << (std::ostream& os , const Particle & particle);

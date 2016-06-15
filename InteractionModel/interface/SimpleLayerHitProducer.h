@@ -20,7 +20,7 @@ namespace fastsim
     {
     public:
 	SimpleLayerHitProducer();
-	void interact(Particle & particle,const Layer & layer,FSimEvent & simEvent) override;
+	void interact(Particle & particle,const Layer & layer,FSimEvent & simEvent,const RandomEngineAndDistribution & random) override;
 	void registerProducts(edm::ProducerBase & producer) const override;
 	void storeProducts(edm::Event & iEvent) override;
     private:

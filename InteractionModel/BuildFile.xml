@@ -1,6 +1,7 @@
 <use name="DataFormats/Math"/>
 <use name="FastSimulation/Layer"/>
 <use name="FastSimulation/Particle"/>
+<use name="FastSimulation/Utilities"/>
 <export>
   <lib name="1"/>
 </export>

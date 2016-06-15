@@ -30,6 +30,9 @@
 #include "FastSimulation/Particle/interface/ParticleTable.h"
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
 
+// other
+#include "TLorentzVector.h"
+
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
 public:
 
@@ -108,7 +111,12 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
 
 	// create particle for propagation, material interactions, decays...
-	fastsim::Particle particle(simTrack.type(),simTrack.charge(),simTrack.vertex().position(),simTrack.momentum(),simTrack.decayTime());
+	const math::XYZTLorentzVector & position = simTrack.vertex().position();
+	const math::XYZTLorentzVector & momentum = simTrack.momentum();
+	fastsim::Particle particle(simTrack.type(),simTrack.charge(),
+				   TLorentzVector(position.X(),position.Y(),position.Z(),position.T()),
+				   TLorentzVector(momentum.X(),momentum.Y(),momentum.Z(),position.E())
+				   ,simTrack.decayTime());
 
 	// move the particle through the layers
 	fastsim::LayerNavigator layerNavigator(*detector_);
@@ -126,12 +134,12 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    LogDebug(MESSAGECATEGORY) << "   performing interactions. " << layer->getInteractionModels().size() << " interactionModels for this layer";
 	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
 	    {
-		interactionModel->interact(particle,*layer,simEvent_);
+		interactionModel->interact(particle,*layer,simEvent_,random);
 	    }
 
 	    // kinematic cuts
 	    // temporary: break after 100 ns
-	    if(particle.position().t() > 100)
+	    if(particle.position().T() > 100)
 	    {
 		break;
 	    }

@@ -342,11 +342,11 @@ std::ostream& fastsim::operator << (std::ostream& os , const fastsim::Geometry &
     return os;
 }
 
-double fastsim::Geometry::getMagneticFieldZ (const math::XYZTLorentzVector & position) const
+double fastsim::Geometry::getMagneticFieldZ (const TLorentzVector & position) const
 {
     if(magneticField_)
     {
-	return magneticField_->inTesla(GlobalPoint(position.x(),position.y(),position.z())).z();
+	return magneticField_->inTesla(GlobalPoint(position.X(),position.Y(),position.Z())).z();
     }
     else
     {

@@ -6,19 +6,21 @@
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 
+#include "TLorentzVector.h"
+
 namespace fastsim{
 
     class BarrelLayer : public Layer
     {
-		public:
-			~BarrelLayer(){};
-
-			BarrelLayer(double radius, const std::vector<double> & limits, const std::vector<double> & thickness, const DetLayer *detLayer) :
-				Layer(radius, limits, thickness, detLayer) {}
-                         
+    public:
+	~BarrelLayer(){};
+	
+	BarrelLayer(double radius, const std::vector<double> & limits, const std::vector<double> & thickness, const DetLayer *detLayer) :
+	    Layer(radius, limits, thickness, detLayer) {}
+	
 	BarrelLayer(BarrelLayer &&) = default;
-
-	void setMagneticField(const MagneticField & magneticField, double limit)
+	
+	void setMagneticField(const MagneticField & magneticField, double limit) override
 	{
 	    field.reset(new TH1F("h", "h", 100, 0., limit));
 	    field->SetDirectory(0);
@@ -27,19 +29,24 @@ namespace fastsim{
 		field->SetBinContent(i, magneticField.inTesla(GlobalPoint(position_, 0., field->GetXaxis()->GetBinCenter(i))).z());
 	    }
 	}
+	
+	const double getRadius() const { return position_; }
+	
+	const double materialMaxAbsZ() const { return maxMaterial; }
+	
+	const double getThickness(const TLorentzVector & position, const TLorentzVector & momentum) const override
+	{
+	    if(!this->isOnSurface(position))
+	    {
+		return 0;
+	    }
+	    double fabsCosTheta = fabs(momentum.Vect().Dot(position.Vect())) / momentum.Rho() / position.Rho();
+	    return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(position.Z()))) / fabsCosTheta;
+	}
 
-			const double getRadius() const { return position_; }
-
-			const double materialMaxAbsZ() const { return maxMaterial; }
-
-			const double getThickness(const math::XYZTLorentzVector& pos, const math::XYZTLorentzVector& mom) const {
-				GlobalVector P(mom.Px(),mom.Py(),mom.Pz());
-				GlobalVector N(pos.X()/pos.R(),pos.Y()/pos.R(),0.);
-				return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(pos.Z()))) / fabs(P.dot(N)) * P.mag();
-			}
-
-	const double getMagneticFieldZ(math::XYZTLorentzVector pos) const {
-	    return Layer::getMagneticFieldZ(fabs(pos.z()));
+	const double getMagneticFieldZ(const TLorentzVector & pos) const override
+	{
+	    return Layer::getMagneticFieldZ(fabs(pos.Z()));
 	}
 
 	bool isForward() const override 
@@ -47,9 +54,9 @@ namespace fastsim{
 	    return false;
 	}
 
-	bool isOnSurface(const math::XYZTLorentzVector & position) const override
+	bool isOnSurface(const TLorentzVector & position) const override
 	{
-	    return fabs(position_ - position.rho()) < epsilonDistance_;
+	    return fabs(position_ - position.Perp()) < epsilonDistance_;
 	}
     };
 

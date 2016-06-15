@@ -18,11 +18,14 @@ void fastsim::SimpleLayerHitProducer::registerProducts(edm::ProducerBase & produ
     producer.produces<std::vector<math::XYZTLorentzVector> >();
 }
 
-void fastsim::SimpleLayerHitProducer::interact(Particle & particle,const fastsim::Layer & layer,FSimEvent & simEvent)
+void fastsim::SimpleLayerHitProducer::interact(Particle & particle,
+					       const fastsim::Layer & layer,
+					       FSimEvent & simEvent,
+					       const RandomEngineAndDistribution & random)
 {
     if(layer.isOnSurface(particle.position()))
     {
-	layerHits_->push_back(particle.position());
+	layerHits_->push_back(math::XYZTLorentzVector(particle.position().X(),particle.position().Y(),particle.position().Z(),particle.position().T()));
     }
 }
 

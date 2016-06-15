@@ -27,7 +27,7 @@ namespace fastsim{
 	~Geometry();
 
 	// Returns the magnetic field
-	double getMagneticFieldZ(const math::XYZTLorentzVector & position) const;
+	double getMagneticFieldZ(const TLorentzVector & position) const;
 
 	const std::vector<std::unique_ptr<BarrelLayer> >& barrelLayers() const { return barrelLayers_; }
 	const std::vector<std::unique_ptr<ForwardLayer> >& forwardLayers() const { return forwardLayers_; }

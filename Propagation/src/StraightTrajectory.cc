@@ -32,7 +32,7 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
     // with b = p_x + p_y^2     // SIMON: I don't think this is what you ment to write
     // with c = x_0^2 + y_0^2 - R^2
     double a = momentum_.Perp2();
-    double b = (position_.x()*momentum_.px() + position_.y()*momentum_.py() );
+    double b = (position_.X()*momentum_.X() + position_.Y()*momentum_.Y() );
     double c = position_.Perp2() - layer.getRadius()*layer.getRadius();
 
     double delta = b*b - a*c;
@@ -65,9 +65,9 @@ void fastsim::StraightTrajectory::move(double deltaTimeC)
     // particle must be ON layer
     // better attach a layer to the particle...
     position_.SetXYZT(
-	position_.x() + momentum_.px()/momentum_.E()*deltaTimeC,
-	position_.y() + momentum_.py()/momentum_.E()*deltaTimeC,
-	position_.z() + momentum_.pz()/momentum_.E()*deltaTimeC,
-	position_.t() + deltaTimeC / speedOfLight_
+	position_.X() + momentum_.X()/momentum_.E()*deltaTimeC,
+	position_.Y() + momentum_.Y()/momentum_.E()*deltaTimeC,
+	position_.Z() + momentum_.Z()/momentum_.E()*deltaTimeC,
+	position_.T() + deltaTimeC / speedOfLight_
 	);
 }

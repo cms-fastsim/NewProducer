@@ -82,7 +82,7 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     LogDebug(MESSAGECATEGORY) << "   magnetic field z component:" << magneticFieldZ;
 
     // particle moves inwards?
-    bool particleMovesInwards = particle.momentum().px()*particle.position().x() + particle.momentum().py()*particle.position().y() < 0;
+    bool particleMovesInwards = particle.momentum().X()*particle.position().X() + particle.momentum().Y()*particle.position().Y() < 0;
     
     /*
       update nextBarrelLayer and nextForwardLayer
@@ -101,7 +101,7 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	*/
 	for(const auto & layer : geometry_->barrelLayers())
 	{
-	    if(particle.position().rho() < layer->getRadius() || (particleMovesInwards && particle.position().rho() == layer->getRadius()))
+	    if(particle.position().Perp() < layer->getRadius() || (particleMovesInwards && particle.position().Perp() == layer->getRadius()))
 	    {
 		nextBarrelLayer_ = layer.get();
 		break;
@@ -114,7 +114,7 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	*/
 	for(const auto & layer : geometry_->forwardLayers())
 	{
-	    if(particle.position().z() < layer->getZ() || (particle.momentum().pz() < 0 && particle.position().z() == layer->getZ()))
+	    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
 	    {
 		nextForwardLayer_ = layer.get();
 		break;
@@ -141,14 +141,14 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	}
 	else if(layer == nextForwardLayer_)
 	{
-	    if(particle.momentum().pz() > 0)
+	    if(particle.momentum().Z() > 0)
 	    {
 		nextForwardLayer_ = geometry_->nextForwardLayer(nextForwardLayer_);
 	    }
 	}
 	else if(layer == geometry_->previousForwardLayer(nextForwardLayer_))
 	{
-	    if(particle.momentum().pz() < 0)
+	    if(particle.momentum().Z() < 0)
 	    {
 		nextForwardLayer_ = geometry_->previousForwardLayer(nextForwardLayer_);
 	    }
@@ -177,7 +177,7 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     {
 	layers.push_back(geometry_->previousBarrelLayer(nextBarrelLayer_));
     }
-    if(particle.momentum().pz() > 0)
+    if(particle.momentum().Z() > 0)
     {
 	if(nextForwardLayer_)
 	{
@@ -208,8 +208,8 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     if(layer)
     {
 	trajectory->move(deltaTime);
-	particle.setPosition(trajectory->getPosition());
-	particle.setMomentum(trajectory->getMomentum());
+	particle.position() = trajectory->getPosition();
+	particle.momentum() = trajectory->getMomentum();
 	LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *layer;
     }
 
