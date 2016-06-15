@@ -7,13 +7,6 @@ git clone git@github.com:cms-fastsim/NewProducer.git FastSimulation
 USER_CXXFLAGS="-g -D=EDM_ML_DEBUG" scram b -j 8 # special flags to switch on debugging code
 ```
 
-# How to compile the Geometry package
-
-```
-cd FastSimulation/Geometry
-scram b # works right now
-```
-
 # Hot to run
 
 ```
