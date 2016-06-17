@@ -1,6 +1,4 @@
-//FAMOS Headers
 #include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
-#include "FastSimulation/InteractionModel/interface/Bremsstrahlung.h"
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Layer/interface/Layer.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -9,6 +7,30 @@
 #include <cmath>
 #include <Math/RotationY.h>
 #include <Math/RotationZ.h>
+
+#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
+
+namespace fastsim
+{
+    class Bremsstrahlung : public InteractionModel
+    {
+    public:
+	Bremsstrahlung(const edm::ParameterSet & cfg);
+	void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random);
+    private:
+	math::XYZTLorentzVector brem(Particle & particle , double xmin,const RandomEngineAndDistribution & random) const;
+	double gbteth(const double ener,
+		      const double partm,
+		      const double efrac,
+		      const RandomEngineAndDistribution & random) const ;
+	// why do we have a dedicated implementation here? check it, probably it can go...
+	unsigned int poisson(double ymu, const RandomEngineAndDistribution & random);
+	double minPhotonEnergy_;
+	double minPhotonEnergyFraction_;
+    };
+}
 
 fastsim::Bremsstrahlung::Bremsstrahlung(const edm::ParameterSet & cfg)
     : fastsim::InteractionModel("Bremsstrahlung")
@@ -159,3 +181,8 @@ fastsim::Bremsstrahlung::poisson(double ymu, const RandomEngineAndDistribution &
     return n;                                                        
 }
 
+DEFINE_EDM_PLUGIN(
+    fastsim::InteractionModelFactory,
+    fastsim::Bremsstrahlung,
+    "fastsim::Bremsstrahlung"
+    );

@@ -1,7 +1,4 @@
-<use name="DataFormats/Math"/>
-<use name="FastSimulation/Layer"/>
-<use name="FastSimulation/Particle"/>
-<use name="FastSimulation/Utilities"/>
+<use name="FWCore/PluginManager"/>
 <export>
   <lib name="1"/>
 </export>

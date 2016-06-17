@@ -1,22 +1,19 @@
 #ifndef FASTSIM_INTERACTIONMODELFACTORY
 #define FASTSIM_INTERACTIONMODELFACTORY
 
-#include <memory>
+#include "FWCore/PluginManager/interface/PluginFactory.h"
+#include "string"
 
 namespace edm
 {
     class ParameterSet;
-    class ProducerBase;
 }
 
 namespace fastsim
 {
     class InteractionModel;
-    class InteractionModelFactory
-    {
-    public:
-	static std::unique_ptr<InteractionModel> create(const edm::ParameterSet & cfg);
-    };
+    typedef edmplugin::PluginFactory<fastsim::InteractionModel*(const edm::ParameterSet&)> InteractionModelFactory;
 }
+
 
 #endif

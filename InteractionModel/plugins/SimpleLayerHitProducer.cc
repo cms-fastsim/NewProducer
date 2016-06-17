@@ -1,12 +1,31 @@
-#include "FastSimulation/InteractionModel/interface/SimpleLayerHitProducer.h"
+#include "memory"
+#include "vector"
+#include "DataFormats/Math/interface/LorentzVector.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Layer/interface/Layer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "DataFormats/Math/interface/LorentzVector.h"
 #include "FWCore/Framework/interface/ProducerBase.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
 
-fastsim::SimpleLayerHitProducer::SimpleLayerHitProducer()
+namespace fastsim
+{
+    class SimpleLayerHitProducer : public InteractionModel
+    {
+    public:
+	SimpleLayerHitProducer(const edm::ParameterSet & cfg);
+	void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random) override;
+	void registerProducts(edm::ProducerBase & producer) const override;
+	void storeProducts(edm::Event & iEvent) override;
+    private:
+	std::unique_ptr<std::vector<math::XYZTLorentzVector> > layerHits_;
+    };
+}
+
+fastsim::SimpleLayerHitProducer::SimpleLayerHitProducer(const edm::ParameterSet & cfg)
     : fastsim::InteractionModel("SimpleLayerHitProducer")
     , layerHits_(new std::vector<math::XYZTLorentzVector>())
 {
@@ -34,3 +53,9 @@ void fastsim::SimpleLayerHitProducer::storeProducts(edm::Event & iEvent)
     LogDebug("FastSimulation") << "      storing products" << std::endl;
     iEvent.put(std::move(layerHits_));
 }
+
+DEFINE_EDM_PLUGIN(
+    fastsim::InteractionModelFactory,
+    fastsim::SimpleLayerHitProducer,
+    "fastsim::SimpleLayerHitProducer"
+    );
