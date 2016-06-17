@@ -101,7 +101,7 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	*/
 	for(const auto & layer : geometry_->barrelLayers())
 	{
-	    if(particle.position().Perp() < layer->getRadius() || (particleMovesInwards && particle.position().Perp() == layer->getRadius()))
+	    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
 	    {
 		nextBarrelLayer_ = layer.get();
 		break;

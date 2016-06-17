@@ -3,6 +3,7 @@
 
 #include "FastSimulation/Layer/interface/BarrelLayer.h"
 #include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 class GeometricSearchTracker;
 class MagneticField;
@@ -27,7 +28,7 @@ namespace fastsim{
 	~Geometry();
 
 	// Returns the magnetic field
-	double getMagneticFieldZ(const TLorentzVector & position) const;
+	double getMagneticFieldZ(const math::XYZTLorentzVector & position) const;
 
 	const std::vector<std::unique_ptr<BarrelLayer> >& barrelLayers() const { return barrelLayers_; }
 	const std::vector<std::unique_ptr<ForwardLayer> >& forwardLayers() const { return forwardLayers_; }

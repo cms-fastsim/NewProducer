@@ -2,6 +2,7 @@
 #define FASTSIM_INTERACTIONMODEL
 
 #include "string"
+#include "vector"
 
 namespace edm
 {
@@ -9,7 +10,6 @@ namespace edm
     class ProducerBase;
 }
 
-class FSimEvent;
 class RandomEngineAndDistribution;
 
 namespace fastsim
@@ -22,7 +22,7 @@ namespace fastsim
 	InteractionModel(std::string className)
 	    : className_(className){;}
 	virtual ~InteractionModel(){;}
-	virtual void interact(Particle & particle,const Layer & layer,FSimEvent& simEvent,const RandomEngineAndDistribution & random) = 0;
+	virtual void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random) = 0;
 	virtual void registerProducts(edm::ProducerBase & producer) const{;}
 	virtual void storeProducts(edm::Event & iEvent) {;}
  	friend std::ostream& operator << (std::ostream& o , const InteractionModel & model); 

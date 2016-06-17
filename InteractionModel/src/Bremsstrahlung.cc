@@ -7,6 +7,8 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include <cmath>
+#include <Math/RotationY.h>
+#include <Math/RotationZ.h>
 
 fastsim::Bremsstrahlung::Bremsstrahlung(const edm::ParameterSet & cfg)
     : fastsim::InteractionModel("Bremsstrahlung")
@@ -17,8 +19,7 @@ fastsim::Bremsstrahlung::Bremsstrahlung(const edm::ParameterSet & cfg)
 }
 
 
-void
-fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & layer, FSimEvent& simEvent,const RandomEngineAndDistribution & random)
+void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & layer,std::vector<fastsim::Particle> & secondaries,const RandomEngineAndDistribution & random)
 {
     // only consider electrons and positrons
     if(!abs(particle.pdgId())==11)
@@ -60,8 +61,6 @@ fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & la
     {
 	return;
     }
-    //!! fix
-    //_theUpdatedState.reserve(nPhotons);
 
     //Rotate to the lab frame
     double theta = particle.momentum().Theta();
@@ -74,19 +73,17 @@ fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & la
 	if ( particle.momentum().E() < minPhotonEnergy_ ) break;
 
 	// Add a photon
-	fastsim::Particle photon(22,particle.charge(),particle.position(),brem(particle, xmin, random));
-	photon.momentum().RotateY(theta);
-	photon.momentum().RotateZ(phi);
-	// TODO: put photons in event
-	//_theUpdatedState.push_back(photon);
+	secondaries.emplace_back(22,0,particle.position(),brem(particle, xmin, random));
+	secondaries.back().momentum() = ROOT::Math::RotationY(theta)*secondaries.back().momentum();
+	secondaries.back().momentum() = ROOT::Math::RotationZ(phi)*secondaries.back().momentum();
 	
 	// Update the original e+/-
-	particle.momentum() -= photon.momentum();
+	particle.momentum() -= secondaries.back().momentum();
     }
 }	
 
 
-TLorentzVector
+math::XYZTLorentzVector
 fastsim::Bremsstrahlung::brem(fastsim::Particle & particle , double xmin,const RandomEngineAndDistribution & random) const 
 {
 
@@ -117,7 +114,7 @@ fastsim::Bremsstrahlung::brem(fastsim::Particle & particle , double xmin,const R
     double sphi   = std::sin(phi);
     double cphi   = std::cos(phi);
   
-    return xp * particle.momentum().E() * TLorentzVector(stheta*cphi,stheta*sphi,ctheta,1.);
+    return xp * particle.momentum().E() * math::XYZTLorentzVector(stheta*cphi,stheta*sphi,ctheta,1.);
   
 }
 

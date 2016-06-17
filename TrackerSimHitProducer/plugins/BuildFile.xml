@@ -3,8 +3,7 @@
 <use name="FWCore/ParameterSet"/>
 <use name="SimGeneral/HepPDTRecord"/>
 <use name="FastSimulation/Utilities"/>
-<use name="FastSimulation/Event"/>
-<use name="FastSimulation/Particle"/>
+<use name="FastSimulation/NewParticle"/>
 <use name="FastSimulation/TrackerSimHitProducer"/>
 <use name="FastSimulation/Geometry"/>
 <use name="FastSimulation/Propagation"/>

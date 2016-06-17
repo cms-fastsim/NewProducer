@@ -3,10 +3,7 @@
 
 #include "FastSimulation/Layer/interface/Layer.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
-#include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
-
-#include "TLorentzVector.h"
 
 namespace fastsim{
 
@@ -34,7 +31,7 @@ namespace fastsim{
 	
 	const double materialMaxAbsZ() const { return maxMaterial; }
 	
-	const double getThickness(const TLorentzVector & position, const TLorentzVector & momentum) const override
+	const double getThickness(const math::XYZTLorentzVector & position, const math::XYZTLorentzVector & momentum) const override
 	{
 	    if(!this->isOnSurface(position))
 	    {
@@ -44,7 +41,7 @@ namespace fastsim{
 	    return thickness.GetBinContent(thickness.GetXaxis()->FindBin(fabs(position.Z()))) / fabsCosTheta;
 	}
 
-	const double getMagneticFieldZ(const TLorentzVector & pos) const override
+	const double getMagneticFieldZ(const math::XYZTLorentzVector & pos) const override
 	{
 	    return Layer::getMagneticFieldZ(fabs(pos.Z()));
 	}
@@ -54,9 +51,9 @@ namespace fastsim{
 	    return false;
 	}
 
-	bool isOnSurface(const TLorentzVector & position) const override
+	bool isOnSurface(const math::XYZTLorentzVector & position) const override
 	{
-	    return fabs(position_ - position.Perp()) < epsilonDistance_;
+	    return fabs(position_ - position.Pt()) < epsilonDistance_;
 	}
     };
 

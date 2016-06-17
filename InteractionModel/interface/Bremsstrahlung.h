@@ -3,13 +3,12 @@
 
 
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 namespace edm
 {
     class ParameterSet;
 }
-
-class TLorentzVector;
 
 namespace fastsim
 {
@@ -17,9 +16,9 @@ namespace fastsim
     {
     public:
 	Bremsstrahlung(const edm::ParameterSet & cfg);
-	void interact(Particle & particle,const Layer & layer,FSimEvent& simEvent,const RandomEngineAndDistribution & random);
+	void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random);
     private:
-	TLorentzVector brem(Particle & particle , double xmin,const RandomEngineAndDistribution & random) const;
+	math::XYZTLorentzVector brem(Particle & particle , double xmin,const RandomEngineAndDistribution & random) const;
 	double gbteth(const double ener,
 		      const double partm,
 		      const double efrac,

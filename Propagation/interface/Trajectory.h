@@ -3,7 +3,7 @@
 
 #include "memory"
 
-#include "TLorentzVector.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 namespace fastsim
 {
@@ -17,20 +17,18 @@ namespace fastsim
 	static std::unique_ptr<Trajectory> createTrajectory(const fastsim::Particle & particle,const double magneticFieldZ);
 	virtual bool crosses(const BarrelLayer & layer) const = 0;
 	virtual bool crossesMaterial(const ForwardLayer & layer) const = 0;
-	const TLorentzVector & getPosition(){return position_;}
-	const TLorentzVector & getMomentum(){return momentum_;}
+	const math::XYZTLorentzVector & getPosition(){return position_;}
+	const math::XYZTLorentzVector & getMomentum(){return momentum_;}
 	double nextCrossingTimeC(const Layer & layer) const;
 	double nextCrossingTimeC(const ForwardLayer & layer) const;
 	virtual double nextCrossingTimeC(const BarrelLayer & layer) const = 0;
 	virtual void move(double deltaTC) = 0;
     protected:
 	Trajectory(const fastsim::Particle & particle);
-	// probably just storing const pointer to position and momentum is fine
-	TLorentzVector position_;
-	TLorentzVector momentum_;
+	math::XYZTLorentzVector position_;
+	math::XYZTLorentzVector momentum_;
 	static const double speedOfLight_; // in cm / ns
 	static const double epsiloneTimeC_;
-	// consider storing particle mass, as it is needed frequently
     };
 }
 

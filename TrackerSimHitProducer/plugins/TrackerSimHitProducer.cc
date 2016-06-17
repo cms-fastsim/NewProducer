@@ -17,21 +17,22 @@
 // data formats
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
+#include "SimDataFormats/Track/interface/SimTrackContainer.h"
 #include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
 #include "DataFormats/Common/interface/Handle.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 // fastsim
 #include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
-#include "FastSimulation/Event/interface/FSimEvent.h"
 #include "FastSimulation/Geometry/interface/Geometry.h"
 #include "FastSimulation/Layer/interface/Layer.h"
 #include "FastSimulation/Propagation/interface/LayerNavigator.h"
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Particle/interface/ParticleTable.h"
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "FastSimulation/TrackerSimHitProducer/interface/ParticleLooper.h"
 
 // other
-#include "TLorentzVector.h"
 
 class TrackerSimHitProducer : public edm::stream::EDProducer<> {
 public:
@@ -45,8 +46,8 @@ private:
     void beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup) override;
 
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
-    FSimEvent simEvent_;
     edm::ParameterSet detectorDefinitionCfg_;
+    double beamPipeRadius_;
     std::unique_ptr<fastsim::Geometry> detector_;
     static const std::string MESSAGECATEGORY;
 };
@@ -58,8 +59,8 @@ const std::string TrackerSimHitProducer::MESSAGECATEGORY = "FastSimulation";
 //
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
     : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
-    , simEvent_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
     , detectorDefinitionCfg_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
+    , beamPipeRadius_(iConfig.getParameter<double>("beamPipeRadius"))
 {
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
@@ -89,7 +90,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 
     edm::ESHandle < HepPDT::ParticleDataTable > pdt;
     iSetup.getData(pdt);
-    simEvent_.initializePdt(&(*pdt));
+    // NEED SENTRY?
     ParticleTable::Sentry ptable(&(*pdt));
 
     edm::Handle<edm::HepMCProduct> genParticles;
@@ -98,30 +99,23 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     // ?? is this the right place ??
     RandomEngineAndDistribution random(iEvent.streamID());
 
-    simEvent_.clear();
-    edm::EventID eventId = iEvent.id();
-    simEvent_.fill(*genParticles->GetEvent(),eventId);
-    
+    fastsim::ParticleLooper particleLooper(
+	*genParticles->GetEvent()
+	,*pdt
+	,beamPipeRadius_
+	,output_simTracks
+	,output_simVertices);
+	
     // loop over particles
     LogDebug(MESSAGECATEGORY) << "################################"
 			      << "\n###############################";    
-    for( unsigned simTrackIndex=0; simTrackIndex < simEvent_.nTracks(); ++simTrackIndex) 
+
+    for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(); particle != 0;particle=particleLooper.nextParticle()) 
     {
-	// reference to simtrack
-	const FSimTrack & simTrack = simEvent_.track(simTrackIndex);
-
-	// create particle for propagation, material interactions, decays...
-	const math::XYZTLorentzVector & position = simTrack.vertex().position();
-	const math::XYZTLorentzVector & momentum = simTrack.momentum();
-	fastsim::Particle particle(simTrack.type(),simTrack.charge(),
-				   TLorentzVector(position.X(),position.Y(),position.Z(),position.T()),
-				   TLorentzVector(momentum.X(),momentum.Y(),momentum.Z(),position.E())
-				   ,simTrack.decayTime());
-
 	// move the particle through the layers
 	fastsim::LayerNavigator layerNavigator(*detector_);
 	const fastsim::Layer * layer = 0;
-	while(layerNavigator.moveParticleToNextLayer(particle,layer))
+	while(layerNavigator.moveParticleToNextLayer(*particle,layer))
 	{
 
 	    if(layer)
@@ -132,14 +126,17 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	    
 	    // perform interaction between layer and particle
 	    LogDebug(MESSAGECATEGORY) << "   performing interactions. " << layer->getInteractionModels().size() << " interactionModels for this layer";
+	    std::vector<fastsim::Particle> secondaries;
 	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
 	    {
-		interactionModel->interact(particle,*layer,simEvent_,random);
+		secondaries.clear();
+		interactionModel->interact(*particle,*layer,secondaries,random);
+		//addSecondaries(particle,particleIndex,secondaries);
 	    }
 
 	    // kinematic cuts
 	    // temporary: break after 100 ns
-	    if(particle.position().T() > 100)
+	    if(particle->position().T() > 100)
 	    {
 		break;
 	    }
@@ -150,24 +147,20 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
 	}
 
 	// do decays
-	/*
-	  if(particle.decayed())
-	  {
-	  // perform decay
-	  }
-	*/
-
+	if(particle->remainingProperLifeTime() == 0.)
+	{
+	    //std::vector<fastsim::Particle> secondaries;
+	    //decayer.decay(*particle,secondaries);
+	    //addSecondaries(*particle,particleIndex,secondaries);
+	}
+	
 	LogDebug(MESSAGECATEGORY) << "################################"
 				  << "\n###############################";
     }
 
     // store simHits and simTracks
-    // TODO: get rid of this TEMP
-    std::unique_ptr<edm::SimTrackContainer> TEMP(new edm::SimTrackContainer);
-    simEvent_.load(*output_simTracks,*TEMP);
-    simEvent_.load(*output_simVertices);
-    iEvent.put(std::move(output_simTracks));
-    iEvent.put(std::move(output_simVertices));
+    iEvent.put(particleLooper.harvestSimTracks());
+    iEvent.put(particleLooper.harvestSimVertices());
     // store products of interaction models, i.e. simHits
     for(fastsim::InteractionModel * interactionModel : detector_->getInteractionModels())
     {
@@ -175,4 +168,33 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     }
 }
 
+// TODO: this should actually become a member function of FSimEvent
+//       to be used by decays as well
+/*
+void TrackerSimHitProducer::addSecondaries(const fastsim::Particle parent,int parentIndex,std::vector<fastsim::Particle> secondaries)
+{
+    // add secondaries to the event
+    if(secondaries.size() > 0)
+    {
+	// TODO: probably want to get rid of the TLorentzVector in Particle etc.
+	//    see https://root.cern.ch/root/html/MATH_GENVECTOR_Index.html
+	//    it got all kinds of methods to do transformations
+	int vertexIndex = simEvent_.addSimVertex(math::XYZTLorentzVector(parent.position().X(),
+									 parent.position().Y(),
+									 parent.position().Z(),
+									 parent.position().T())
+						 simTrackIndex);
+	// TODO: deal with closest charged daughter
+	for(const auto & secondary : secondaries)
+	{
+	    RawParticle _secondary(secondary.pdgId(),
+				   math::XYZTLorentzVector(secondary.momentum.X(),
+							   secondary.momentum.Y()
+							   secondary.momentum.Z()
+							   secondary.momentum.E()));
+	    simEvent_.addSimTrack(_secondary,vertexIndex);
+	}
+    }
+}
+*/
 DEFINE_FWK_MODULE(TrackerSimHitProducer);

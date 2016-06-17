@@ -2,7 +2,6 @@
 #include "FastSimulation/Layer/interface/BarrelLayer.h"
 #include "FastSimulation/Layer/interface/ForwardLayer.h"
 #include "FastSimulation/NewParticle/interface/Particle.h"
-#include "TLorentzVector.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include <math.h>
 
@@ -13,7 +12,7 @@
 
 fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,double magneticFieldZ)
     : Trajectory(particle)
-    , radius_( abs(momentum_.Perp() / ( speedOfLight_ * 1e-4 * magneticFieldZ * particle.charge() )))
+    , radius_( abs(momentum_.Pt() / ( speedOfLight_ * 1e-4 * magneticFieldZ * particle.charge() )))
     , phi0_(std::atan2(momentum_.Px(),momentum_.Py()) - (momentum_.Px() > 0 || momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ))  // something wrong here, should depend on direction of magnetic field and charge!
     // SIMON: no, this formula is correct! The magnetic force is always perpendicular to the momentum!
     // - the sign of the bField and the sign of charge determine the direction of the rotation. However, phi0 stays the same

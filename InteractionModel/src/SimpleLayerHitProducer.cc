@@ -20,7 +20,7 @@ void fastsim::SimpleLayerHitProducer::registerProducts(edm::ProducerBase & produ
 
 void fastsim::SimpleLayerHitProducer::interact(Particle & particle,
 					       const fastsim::Layer & layer,
-					       FSimEvent & simEvent,
+					       std::vector<Particle> & secondaries,
 					       const RandomEngineAndDistribution & random)
 {
     if(layer.isOnSurface(particle.position()))
