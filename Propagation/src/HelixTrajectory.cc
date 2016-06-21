@@ -31,11 +31,6 @@ bool fastsim::HelixTrajectory::crosses(const BarrelLayer & layer) const
     return (minR_ < layer.getRadius() && maxR_ > layer.getRadius());
 }
 
-bool fastsim::HelixTrajectory::crossesMaterial(const ForwardLayer & layer) const
-{
-    return (minR_ < layer.getMaxMaterialR() && maxR_ > layer.getMinMaterialR());
-}
-
 double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) const
 {
     //

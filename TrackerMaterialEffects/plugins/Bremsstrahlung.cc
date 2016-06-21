@@ -5,6 +5,8 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include <cmath>
+#include <memory>
+
 #include <Math/RotationY.h>
 #include <Math/RotationZ.h>
 
@@ -17,8 +19,8 @@ namespace fastsim
     class Bremsstrahlung : public InteractionModel
     {
     public:
-	Bremsstrahlung(const edm::ParameterSet & cfg);
-	void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random);
+	Bremsstrahlung(const std::string & name,const edm::ParameterSet & cfg);
+	void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random);
     private:
 	math::XYZTLorentzVector brem(Particle & particle , double xmin,const RandomEngineAndDistribution & random) const;
 	double gbteth(const double ener,
@@ -32,8 +34,8 @@ namespace fastsim
     };
 }
 
-fastsim::Bremsstrahlung::Bremsstrahlung(const edm::ParameterSet & cfg)
-    : fastsim::InteractionModel("Bremsstrahlung")
+fastsim::Bremsstrahlung::Bremsstrahlung(const std::string & name,const edm::ParameterSet & cfg)
+    : fastsim::InteractionModel(name)
 {
     // Set the minimal photon energy for a Brem from e+/-
     minPhotonEnergy_ = cfg.getParameter<double>("minPhotonEnergy");
@@ -41,7 +43,7 @@ fastsim::Bremsstrahlung::Bremsstrahlung(const edm::ParameterSet & cfg)
 }
 
 
-void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & layer,std::vector<fastsim::Particle> & secondaries,const RandomEngineAndDistribution & random)
+void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & layer,std::vector<std::unique_ptr<fastsim::Particle> > & secondaries,const RandomEngineAndDistribution & random)
 {
     // only consider electrons and positrons
     if(!abs(particle.pdgId())==11)
@@ -95,12 +97,12 @@ void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer
 	if ( particle.momentum().E() < minPhotonEnergy_ ) break;
 
 	// Add a photon
-	secondaries.emplace_back(22,0,particle.position(),brem(particle, xmin, random));
-	secondaries.back().momentum() = ROOT::Math::RotationY(theta)*secondaries.back().momentum();
-	secondaries.back().momentum() = ROOT::Math::RotationZ(phi)*secondaries.back().momentum();
+	secondaries.emplace_back(new fastsim::Particle(22,0,particle.position(),brem(particle, xmin, random)));
+	secondaries.back()->momentum() = ROOT::Math::RotationY(theta)*secondaries.back()->momentum();
+	secondaries.back()->momentum() = ROOT::Math::RotationZ(phi)*secondaries.back()->momentum();
 	
 	// Update the original e+/-
-	particle.momentum() -= secondaries.back().momentum();
+	particle.momentum() -= secondaries.back()->momentum();
     }
 }	
 

@@ -2,17 +2,23 @@
 
 #include "HepMC/GenEvent.h"
 #include "HepMC/Units.h"
+#include "CLHEP/Units/SystemOfUnits.h"
+#include "CLHEP/Units/PhysicalConstants.h"
 
 #include "FastSimulation/NewParticle/interface/Particle.h"
+#include "FastSimulation/NewParticle/interface/ParticleFilter.h"
+
 #include "HepPDT/ParticleDataTable.hh"
 #include "SimDataFormats/Track/interface/SimTrack.h"
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
 
 fastsim::ParticleLooper::ParticleLooper(
     const HepMC::GenEvent & genEvent,
     const HepPDT::ParticleDataTable & particleDataTable,
     double beamPipeRadius,
+    const fastsim::ParticleFilter & particleFilter,
     std::unique_ptr<std::vector<SimTrack> > & simTracks,
     std::unique_ptr<std::vector<SimVertex> > & simVertices)
     : genEvent_(&genEvent)
@@ -21,6 +27,7 @@ fastsim::ParticleLooper::ParticleLooper(
     , genParticleIndex_(0)
     , particleDataTable_(&particleDataTable)
     , beamPipeRadius2_(beamPipeRadius*beamPipeRadius)
+    , particleFilter_(particleFilter)
     , simTracks_(std::move(simTracks))
     , simVertices_(std::move(simVertices))
     // prepare unit convsersions
@@ -50,59 +57,95 @@ fastsim::ParticleLooper::ParticleLooper(
 
 fastsim::ParticleLooper::~ParticleLooper(){}
 
-std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle()
+std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const RandomEngineAndDistribution & random)
 {
+    std::unique_ptr<fastsim::Particle> particle;
+
+    // retrieve particle from buffer
     if(particleBuffer_.size() > 0)
     {
-	auto particle = std::move(particleBuffer_.back());
+	particle = std::move(particleBuffer_.back());
 	particleBuffer_.pop_back();
-	return move(particle);
     }
+
+    // or from genParticle list
     else
     {
-	return nextGenParticle();
+	particle = nextGenParticle();
     }
+
+    // if filter does not accept, skip particle
+    if(!particleFilter_->accepts(particle))
+    {
+	return nextParticle(random);
+    }
+
+    // provide a lifetime for the particle if not yet done
+    if(!particle->isStable() && particle->remainingProperLifeTime() < 0.)
+    {
+	double averageLifeTime = particleData()->cTau()/CLHEP::c_light/ns;
+	if(averageLifeTime > 1e25 ) // ridiculously safe
+	{
+	    particle->setStable();
+	}
+	else
+	{
+	    particle->setRemainingProperLifeTime(-log(random.flatShoot())*);
+	}
+    }
+
+    // add corresponding simTrack to simTrack collection
+    unsigned simTrackIndex = addSimTrack(particle.get());
+    particle->setSimTrackIndex(simTrackIndex);
+
+    // and return
+    return particle;
 }
 
-// what about the lifetime of the secondaries? => draw numbers here, use particle data
-// what about decayer -> should provide particles with right units
-// what about nuclear interactions: do we get the full 4-vector from the interaction model
+// TODO: closest charged daughter...
+// NOTE:  decayer and interactions must provide particles with right units
 void fastsim::ParticleLooper::addSecondaries(
-    int motherSimTrackId,
-    const math::XYZTLorentzVector vertexPosition,
-    std::vector<std::unique_ptr<Particle> > secondaries)
+    const math::XYZTLorentzVector & vertexPosition,
+    int parentSimTrackIndex,
+    std::vector<std::unique_ptr<Particle> > & secondaries)
 {
-    unsigned vertexIndex = addSimVertex(vertexPosition,motherSimTrackId);
+
+    // vertex must be within the accepted volume
+    if(!particleFilter_.accepts(vertexPosition))
+    {
+	return;
+    }
+
+    // add simVertex
+    unsigned simVertexIndex = addSimVertex(vertexPosition,parentSimTrackIndex);
+
+    // add secondaries to buffer
     for(auto & secondary : secondaries)
     {
-	// FIX ME !!! ALSO FIX VERTEX SELECTION
-	//if(particleFilter_.selects(secondary))
-	//{
-	addSimTrack(secondary->pdgId(),secondary->position(),vertexIndex);
+	secondary->setSimVertexIndex(simVertexIndex);
 	particleBuffer_.push_back(std::move(secondary));
-	//}
     }
+
 }
 
 unsigned fastsim::ParticleLooper::addSimVertex(
     const math::XYZTLorentzVector & position,
-    int motherIndex)
+    int parentSimTrackIndex)
 {
-    int vertexIndex = simVertices_->size();
+    int simVertexIndex = simVertices_->size();
     simVertices_->emplace_back(position.Vect(),
-			      position.T(),
-			      motherIndex,
-			      vertexIndex);
-    return vertexIndex;
+			       position.T(),
+			       parentSimTrackIndex,
+			       simVertexIndex);
+    return simVertexIndex;
 }
 
-void fastsim::ParticleLooper::addSimTrack(
-    int pdgId,
-    const math::XYZTLorentzVector & position,
-    int vertexIndex,
-    int genParticleIndex)
+unsigned fastsim::ParticleLooper::addSimTrack(const fastsim::Particle * particle)
 {
-    simTracks_->emplace_back(pdgId,position,vertexIndex,genParticleIndex);
+    int simTrackIndex = simTracks_->size();
+    simTracks_->emplace_back(particle->pdgId(),particle->position(),particle->simVertexIndex(),particle->genParticleIndex());
+    simTracks_->back().setTrackId(simTrackIndex);
+    return simTrackIndex;
 }
 
 std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
@@ -122,14 +165,12 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
 	const HepMC::GenVertex * endVertex = particle.end_vertex();
 	
 	// particle must be produced within the beampipe
-	// UNITS!!!
 	if(productionVertex.position().perp2()*lengthUnitConversionFactor2_ > beamPipeRadius2_)
 	{
 	    continue;
 	}
 	
 	// particle must not decay before it reaches the beam pipe
-	// UNITS!!!
 	if(endVertex && endVertex->position().perp2()*lengthUnitConversionFactor2_ < beamPipeRadius2_)
 	{
 	    continue;
@@ -142,30 +183,27 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
 	    throw cms::Exception("fastsim::ParticleLooper") << "unknown pdg id" << std::endl;
 	}
 	
-	// !!! TAKE PROPER CARE OF UNITS
-	
 	// try to get the life time of the particle from the genEvent
 	double properLifeTime = -1.;
 	if(endVertex)
 	{
-	    // UNITS !!!
 	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
 	    properLifeTime = labFrameLifeTime * particle.momentum().m() / particle.momentum().e();
-	}
-	else
-	{
-	    /// UNITS !!!
-	    // draw a number from ...?
 	}
 	
 	// make the particle
 	std::unique_ptr<Particle> newParticle(
 	    new Particle(particle.pdg_id(),particleData->charge(),
-			 math::XYZTLorentzVector(), // fill in 
-			 math::XYZTLorentzVector(),  // fill in
+			 math::XYZTLorentzVector(productionVertex.position().x()*lengthUnitConversionFactor_,
+						 productionVertex.position().y()*lengthUnitConversionFactor_,
+						 productionVertex.position().z()*lengthUnitConversionFactor_,
+						 productionVertex.position().t()*timeUnitConversionFactor_),
+			 math::XYZTLorentzVector(particle.momentum().x()*momentumUnitConversionFactor_,
+						 particle.momentum().y()*momentumUnitConversionFactor_,
+						 particle.momentum().z()*momentumUnitConversionFactor_,
+						 particle.momentum().e()*momentumUnitConversionFactor_),
 			 properLifeTime));
-	// make the simtrack
-	addSimTrack(newParticle->pdgId(),newParticle->momentum(),0,genParticleIndex_);
+	newParticle->setGenParticleIndex(genParticleIndex_);
 	
 	// and return
 	return std::move(newParticle);

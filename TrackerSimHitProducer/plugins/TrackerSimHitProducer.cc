@@ -1,3 +1,14 @@
+// CONCCLUSIONS
+//    - KEEP THE GEOMETRY STRUCTURE: otherwise magnetic event handling in layerNavigator gets very inelegant
+//    - Initialization and updating:
+//         - option 1: initialize and update layers and interaction models right here
+//         - option 2: initialize and update layers and interaction models inside Geometry
+//    - A FACTORY OR MORE FACTORIES IS / ARE NOT REALLY WHAT WE WANT
+//         - interaction models need to be created in constructor (right?)
+//           (cause the products must be registered at that moment)
+//         - interaction models need to be updated / reset in produce function
+
+
 // system include files
 #include <memory>
 #include <string>
@@ -30,6 +41,7 @@
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Particle/interface/ParticleTable.h"
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
 #include "FastSimulation/TrackerSimHitProducer/interface/ParticleLooper.h"
 
 // other
@@ -43,47 +55,44 @@ public:
 private:
 
     virtual void produce(edm::Event&, const edm::EventSetup&) override;
-    void beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup) override;
 
     edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
-    edm::ParameterSet detectorDefinitionCfg_;
+    fastsim::Geometry detector_;
     double beamPipeRadius_;
-    std::unique_ptr<fastsim::Geometry> detector_;
+    edm::IOVSyncValue iovSyncValue_;
     static const std::string MESSAGECATEGORY;
 };
 
 const std::string TrackerSimHitProducer::MESSAGECATEGORY = "FastSimulation";
 
-//
-// constructors and destructor
-//
 TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
     : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
-    , detectorDefinitionCfg_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
+    , detector_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
     , beamPipeRadius_(iConfig.getParameter<double>("beamPipeRadius"))
 {
+    // register products
     produces<edm::SimTrackContainer>();
     produces<edm::SimVertexContainer>();
-    produces<std::vector<math::XYZTLorentzVector> >();
-}
-
-
-void TrackerSimHitProducer::beginLuminosityBlock(edm::LuminosityBlock const & lumiBlock, edm::EventSetup const & iSetup)
-{
-    detector_.reset(new fastsim::Geometry(detectorDefinitionCfg_,iSetup));
-    for(const fastsim::InteractionModel * interactionModel : detector_->getInteractionModels())
+    for(auto & interactionModel : detector_.getInteractionModels())
     {
 	interactionModel->registerProducts(*this);
     }
-    LogDebug(MESSAGECATEGORY) << "Constructed geometry::\n" << *detector_;
 }
-   
 
-// ------------ method called to produce the data  ------------
+
 void
 TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
     LogDebug(MESSAGECATEGORY) << "   produce";
+
+    // do the iov thing
+    // TODO: check me
+    if(iovSyncValue_!=iSetup.iovSyncValue())
+    {
+	LogDebug(MESSAGECATEGORY) << "   triggering update of event setup" << std::endl;
+	iovSyncValue_=iSetup.iovSyncValue();
+	detector_.update(iSetup);
+    }
 
     std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
     std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::SimVertexContainer);
@@ -102,6 +111,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     fastsim::ParticleLooper particleLooper(
 	*genParticles->GetEvent()
 	,*pdt
+	,particleFilter_
 	,beamPipeRadius_
 	,output_simTracks
 	,output_simVertices);
@@ -113,25 +123,21 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(); particle != 0;particle=particleLooper.nextParticle()) 
     {
 	// move the particle through the layers
-	fastsim::LayerNavigator layerNavigator(*detector_);
+	fastsim::LayerNavigator layerNavigator(detector_);
 	const fastsim::Layer * layer = 0;
 	while(layerNavigator.moveParticleToNextLayer(*particle,layer))
 	{
 
-	    if(layer)
-	    {
-		LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer;
-	    }
-	    LogDebug(MESSAGECATEGORY) << "\n   new state:" << particle;
+	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer
+				      << "\n   new state:" << particle;
 	    
 	    // perform interaction between layer and particle
-	    LogDebug(MESSAGECATEGORY) << "   performing interactions. " << layer->getInteractionModels().size() << " interactionModels for this layer";
-	    std::vector<fastsim::Particle> secondaries;
 	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
 	    {
-		secondaries.clear();
+		LogDebug(MESSAGECATEGORY) << "   interact with" << interactionModel;
+		std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
 		interactionModel->interact(*particle,*layer,secondaries,random);
-		//addSecondaries(particle,particleIndex,secondaries);
+		particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
 	    }
 
 	    // kinematic cuts
@@ -162,7 +168,7 @@ TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup
     iEvent.put(particleLooper.harvestSimTracks());
     iEvent.put(particleLooper.harvestSimVertices());
     // store products of interaction models, i.e. simHits
-    for(fastsim::InteractionModel * interactionModel : detector_->getInteractionModels())
+    for(auto & interactionModel : detector_.getInteractionModels())
     {
 	interactionModel->storeProducts(iEvent);
     }

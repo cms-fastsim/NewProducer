@@ -14,3 +14,6 @@
 <use name="MagneticField/UniformEngine"/>
 <use name="Geometry/CommonDetUnit"/>
 <use name="CondFormats/External"/>
+
+<use name="HepPDT"/>
+<use name="clhep"/>

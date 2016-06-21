@@ -12,7 +12,7 @@ namespace edm
 namespace fastsim
 {
     class InteractionModel;
-    typedef edmplugin::PluginFactory<fastsim::InteractionModel*(const edm::ParameterSet&)> InteractionModelFactory;
+    typedef edmplugin::PluginFactory<fastsim::InteractionModel*(const std::string & name,const edm::ParameterSet&)> InteractionModelFactory;
 }
 
 

@@ -14,9 +14,11 @@ namespace HepPDT
 
 class SimTrack;
 class SimVertex;
+class RandomEngineAndDistribution;
 
 namespace fastsim {
     class Particle;
+    class ParticleFilter;
     class ParticleLooper
     {
 
@@ -26,17 +28,18 @@ namespace fastsim {
 	    const HepMC::GenEvent & genEvent,
 	    const HepPDT::ParticleDataTable & particleDataTable,
 	    double beamPipeRadius,
+	    const ParticleFilter & particleFilter,
 	    std::unique_ptr<std::vector<SimTrack> > & simTracks,
 	    std::unique_ptr<std::vector<SimVertex> > & simVertices);
 	
 	~ParticleLooper();
 
-	std::unique_ptr<Particle> nextParticle();
+	std::unique_ptr<Particle> nextParticle(const RandomEngineAndDistribution & random);
 	
 	void addSecondaries(
+	    const math::XYZTLorentzVector & vertexPosition,
 	    int motherSimTrackId,
-	    const math::XYZTLorentzVector vertexPosition,
-	    std::vector<std::unique_ptr<Particle> > secondaries);
+	    std::vector<std::unique_ptr<Particle> > & secondaries);
 
 	std::unique_ptr<std::vector<SimTrack> > harvestSimTracks()
 	{
@@ -54,11 +57,7 @@ namespace fastsim {
 	    const math::XYZTLorentzVector & position,
 	    int motherIndex);
 	
-	void addSimTrack(
-	    int pdgId,
-	    const math::XYZTLorentzVector & position,
-	    int vertexIndex,
-	    int genParticleIndex = -1);
+	unsigned addSimTrack(const Particle * particle);
 
 	std::unique_ptr<Particle> nextGenParticle();
 
@@ -69,6 +68,7 @@ namespace fastsim {
 	int genParticleIndex_;
 	const HepPDT::ParticleDataTable * const particleDataTable_;
 	const double beamPipeRadius2_;
+	const ParticleFilter * const particleFilter_;
 	std::unique_ptr<std::vector<SimTrack> > simTracks_;
 	std::unique_ptr<std::vector<SimVertex> > simVertices_;
 	double momentumUnitConversionFactor_;

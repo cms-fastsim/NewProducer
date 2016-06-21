@@ -16,8 +16,8 @@ namespace fastsim
     class SimpleLayerHitProducer : public InteractionModel
     {
     public:
-	SimpleLayerHitProducer(const edm::ParameterSet & cfg);
-	void interact(Particle & particle,const Layer & layer,std::vector<Particle> & secondaries,const RandomEngineAndDistribution & random) override;
+	SimpleLayerHitProducer(const std::string & name,const edm::ParameterSet & cfg);
+	void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random) override;
 	void registerProducts(edm::ProducerBase & producer) const override;
 	void storeProducts(edm::Event & iEvent) override;
     private:
@@ -25,8 +25,8 @@ namespace fastsim
     };
 }
 
-fastsim::SimpleLayerHitProducer::SimpleLayerHitProducer(const edm::ParameterSet & cfg)
-    : fastsim::InteractionModel("SimpleLayerHitProducer")
+fastsim::SimpleLayerHitProducer::SimpleLayerHitProducer(const std::string & name,const edm::ParameterSet & cfg)
+    : fastsim::InteractionModel(name)
     , layerHits_(new std::vector<math::XYZTLorentzVector>())
 {
 }
@@ -39,7 +39,7 @@ void fastsim::SimpleLayerHitProducer::registerProducts(edm::ProducerBase & produ
 
 void fastsim::SimpleLayerHitProducer::interact(Particle & particle,
 					       const fastsim::Layer & layer,
-					       std::vector<Particle> & secondaries,
+					       std::vector<std::unique_ptr<Particle> > & secondaries,
 					       const RandomEngineAndDistribution & random)
 {
     if(layer.isOnSurface(particle.position()))

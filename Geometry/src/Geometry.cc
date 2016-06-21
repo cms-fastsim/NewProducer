@@ -3,18 +3,13 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 
-// Tracker/Tracking Headers
-#include "RecoTracker/TkDetLayers/interface/GeometricSearchTracker.h"
 
-#include "FastSimulation/Layer/interface/BarrelLayer.h"
-#include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/LayerFactory.h"
 
-#include "TrackingTools/DetLayers/interface/DetLayer.h"
-#include "TrackingTools/DetLayers/interface/BarrelDetLayer.h"
-#include "TrackingTools/DetLayers/interface/ForwardDetLayer.h"
 
 #include "RecoTracker/Record/interface/TrackerRecoGeometryRecord.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
+#include "MagneticField/UniformEngine/src/UniformMagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 
 #include "FastSimulation/Geometry/interface/Geometry.h"
@@ -28,292 +23,124 @@ using namespace fastsim;
 
 Geometry::~Geometry(){;}
 
-Geometry::Geometry(const edm::ParameterSet& cfg,edm::EventSetup const & iSetup)
+Geometry::Geometry(const edm::ParameterSet& cfg)
     : magneticField_(0)
-    , fixedMagneticFieldZ_(0.)
-{
-    
-    /*
-      initialize the interaction models
-    */
-    const edm::ParameterSet & interactionModelsCfg = cfg.getParameter<edm::ParameterSet>("interactionModels");
-    LogDebug("FastSimulation") << "   found " << interactionModelsCfg.getParameterNames().size() << " interactionModels" << std::endl;
-    for( const std::string & name : interactionModelsCfg.getParameterNames())
+    , useFixedMagneticFieldZ_(cfg.exists("magneticFieldZ"))
+    , fixedMagneticFieldZ_(cfg.getUntrackedParameter<double>("magneticFieldZ",0.))
+    , useTrackerRecoGeometryRecord_(cfg.getUntrackedParameter<bool>("useTrackerRecoGeometryRecord",true))
+    , trackerAlignmentLabel_(cfg.getUntrackedParameter<std::string>("trackerAlignmentLabel",""))
+    , barrelLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers"))
+    , forwardLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
+    , maxRadius_(cfg.getParameter<double>("maxRadius"))
+    , maxZ_(cfg.getParameter<double>("maxZ"))
+{    
+    //----------------
+    // interaction models
+    //---------------
+    const edm::ParameterSet & modelCfgs = cfg.getParameter<edm::ParameterSet>("interactionModels");
+    for( const std::string & modelName : modelCfgs.getParameterNames())
     {
-	const edm::ParameterSet & _cfg = interactionModelsCfg.getParameter<edm::ParameterSet>(name);
-	auto entry = interactionModels_.insert(std::make_pair(name,std::move(fastsim::InteractionModelFactory::create(_cfg))));
-	interactionModelVector_.push_back(entry.first->second.get());
+	const edm::ParameterSet & modelCfg = modelCfgs.getParameter<edm::ParameterSet>(modelName);
+	std::string modelClassName(modelCfg.getParameter<std::string>("className"));
+	std::unique_ptr<fastsim::InteractionModel> interactionModel(InteractionModelFactory::get()->create(modelClassName,modelName,modelCfg));
+	interactionModels_.push_back(std::move(interactionModel));
+	interactionModelMap_[modelName] = interactionModel.get();
     }
 
-    /*
-      setup magnetic field
-    */
-    if(cfg.exists("magneticFieldZ"))
+}
+
+void Geometry::update(const edm::EventSetup & iSetup)
+{
+
+    //----------------
+    // find tracker reconstruction geometry
+    //----------------
+    const GeometricSearchTracker * geometricSearchTracker = 0;
+    if(useTrackerRecoGeometryRecord_)
     {
-	this->setMagneticFieldZ(cfg.getParameter<double>("magneticFieldZ"));
+	edm::ESHandle<GeometricSearchTracker> geometricSearchTrackerHandle;
+	iSetup.get<TrackerRecoGeometryRecord>().get(trackerAlignmentLabel_,geometricSearchTrackerHandle);
+	geometricSearchTracker = &(*geometricSearchTrackerHandle);
+    }
+
+    //----------------
+    // update magnetic field
+    //----------------
+    if(useFixedMagneticFieldZ_)
+    {
+	ownedMagneticField_.reset(new UniformMagneticField(fixedMagneticFieldZ_));
+	magneticField_ = ownedMagneticField_.get();
     }
     else
     {
 	edm::ESHandle<MagneticField> magneticField;
 	iSetup.get<IdealMagneticFieldRecord>().get(magneticField);
-	this->setMagneticField(*magneticField);
+	magneticField_ = &(*magneticField);
     }
 
-    /*
-      setup tracker reconstruction geometry
-    */
-    const GeometricSearchTracker * geometricSearchTracker = 0;
-    bool useTrackerRecoGeometryRecord = cfg.getUntrackedParameter<bool>("useTrackerRecoGeometryRecord",true);
-    if(useTrackerRecoGeometryRecord)
+    //---------------
+    // layer factory
+    //---------------
+    fastsim::LayerFactory layerFactory(geometricSearchTracker
+				       ,*magneticField_
+				       ,interactionModelMap_
+				       ,maxRadius_
+				       ,maxZ_);
+    //---------------
+    // update barrel layers
+    //---------------
+    barrelLayers_.clear();
+    for(const edm::ParameterSet & layerCfg : barrelLayerCfg_)
     {
-	edm::ESHandle<GeometricSearchTracker> geometricSearchTrackerHandle;
-	std::string alignmentLabel = cfg.getParameter<std::string>("trackerAlignmentLabel");
-	iSetup.get<TrackerRecoGeometryRecord>().get(alignmentLabel,geometricSearchTrackerHandle);
-	geometricSearchTracker = &(*geometricSearchTrackerHandle);
+	barrelLayers_.push_back(layerFactory.createBarrelLayer(layerCfg));
     }
-
-    /*
-      create the barrel layers
-    */
-    for(const edm::ParameterSet & layerCfg : cfg.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers"))
+    for(unsigned index = 0;index < barrelLayers_.size();index++)
     {
-	// extract the thicness of the layer
-	std::vector<double> limits = layerCfg.getUntrackedParameter<std::vector<double> >("limits",std::vector<double>());
-	std::vector<double> thickness = layerCfg.getUntrackedParameter<std::vector<double> >("thickness",std::vector<double>());
-
-	// extract the associated active layer
-	const DetLayer * detLayer = getBarrelDetLayer( layerCfg.getUntrackedParameter<std::string>("activeLayer",""), geometricSearchTracker );
-	
-        // first try extracting radius from configuration
-        double radius = layerCfg.getUntrackedParameter<double>("radius",-1.);
-	// then try extracting from detLayer
-	if(radius <= 0 && detLayer)
+	// set index
+	barrelLayers_[index]->setIndex(index);
+	// check order
+	if(index > 0)
 	{
-            radius = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
-        }
-	// then throw error
-	if(radius <= 0)
-	{
-	    throw cms::Exception("FastSimulation/Geometry") << " no way to extract a radius for barrel layer " << barrelLayers_.size() + 1 << std::endl;
-	}
-	
-	// check that the radius is larger than the radius of the previous layer
-	if(barrelLayers_.size() > 0)
-	{
-	    if(radius < barrelLayers_.back()->getRadius())
+	    if(barrelLayers_[index]->getRadius() <= barrelLayers_[index]->getRadius())
 	    {
-		throw cms::Exception("FastSimulation/Geometry") << "barrel layers must be ordered to increasing radius" << std::endl;
+		throw cms::Exception("fastsim::Geometry") 
+		    << "barrel layers must be ordered according to increading radius"
+		    << "\nbarrel layer " << index 
+		    << " has radius smaller than or equal to radius of barrel layer " << index -1;
 	    }
-	}
-
-	// and construct the layer inside the list of barrel layers
-        barrelLayers_.emplace_back(new BarrelLayer(radius, limits, thickness, detLayer));
-	barrelLayers_.back()->setIndex(barrelLayers_.size()-1);
-
-	// try extracting the nuclear interaction thickness factor
-	double nuclearInteractionThicknessFactor = layerCfg.getUntrackedParameter<double>("nuclearInteractionThicknessFactor",-1);
-	if(nuclearInteractionThicknessFactor >= 0)
-	{
-	    barrelLayers_.front()->setNuclearInteractionThicknessFactor(nuclearInteractionThicknessFactor);
-	}
-
-	// add interaction models
-	std::vector<std::string> interactionModelLabels = layerCfg.getUntrackedParameter<std::vector<std::string> >("interactionModels");
-	for(const auto & label : interactionModelLabels)
-	{
-	    auto interactionModel = interactionModels_.find(label);
-	    if(interactionModel == interactionModels_.end())
-	    {
-		throw cms::Exception("FastSimulation") << "unknown interaction model '" << label << "'";
-	    }
-	    barrelLayers_.back()->addInteractionModel(*(*interactionModel).second);
 	}
     }
-
-    /*
-      create the forward layers
-    */
-    for(const edm::ParameterSet & layerCfg : cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
-    {
-
-	// extract the thicness of the layer
-	std::vector<double> limits = layerCfg.getUntrackedParameter<std::vector<double> >("limits",std::vector<double>());
-	std::vector<double> thickness = layerCfg.getUntrackedParameter<std::vector<double> >("thickness",std::vector<double>());
-	
-	// extract the associated active layer
-	std::string activeLayerName = layerCfg.getUntrackedParameter<std::string>("activeLayer","");
-	const DetLayer * posDetLayer = 0;
-	const DetLayer * negDetLayer = 0;
-	if(!activeLayerName.empty())
-	{
-	    negDetLayer = getForwardDetLayer("neg" + activeLayerName  , geometricSearchTracker );
-	    posDetLayer = getForwardDetLayer("pos" + activeLayerName  , geometricSearchTracker );
-	}
-	
-        // first try extracting radius from configuration
-        double z = layerCfg.getUntrackedParameter<double>("z",-1);
-	// then try extracting from detLayer
-	if(z <= 0 && posDetLayer)
-	{
-            z = static_cast<ForwardDetLayer const*>(posDetLayer)->position().z();
-        }
-	// then throw error
-	if(z <= 0)
-	{
-	    throw cms::Exception("FastSimulation/Geometry") << " no way to extract a position for this forward layer..." << std::endl;
-	}
-
-	// check that |z| is larger than for the previous layer
-	if(forwardLayers_.size() > 0)
-	{
-	    if(z < -forwardLayers_.back()->getZ())
-	    {
-		throw cms::Exception("FastSimulation/Geometry") << "forward layers must be ordered to increasing z" << std::endl;
-	    }
-	}
-
-	// create and insert the layer on the negative side
-	forwardLayers_.emplace(forwardLayers_.begin(),new ForwardLayer(-z,limits, thickness, negDetLayer));
-	// create and insert the layer on the positive side
-	forwardLayers_.emplace_back(new ForwardLayer(z,limits, thickness, posDetLayer));
     
-	// try extracting the nuclear interaction thickness factor
-	double nuclearInteractionThicknessFactor = layerCfg.getUntrackedParameter<double>("nuclearInteractionThicknessFactor",-1);
-	if(nuclearInteractionThicknessFactor >= 0)
-	{
-	    forwardLayers_.front()->setNuclearInteractionThicknessFactor(nuclearInteractionThicknessFactor);
-	    forwardLayers_.back()->setNuclearInteractionThicknessFactor(nuclearInteractionThicknessFactor);
-	}
-
-	// add interaction models
-	std::vector<std::string> interactionModelLabels = layerCfg.getUntrackedParameter<std::vector<std::string> >("interactionModels");
-	for(const auto & label : interactionModelLabels)
-	{
-	    auto interactionModel = interactionModels_.find(label);
-	    if(interactionModel == interactionModels_.end())
-	    {
-		throw cms::Exception("FastSimulation") << "unknown interaction model '" << label << "'";
-	    }
-	    forwardLayers_.front()->addInteractionModel(*(*interactionModel).second);
-	    forwardLayers_.back()->addInteractionModel(*(*interactionModel).second);
-	}
+    //--------------
+    // update forward layers
+    //--------------
+    forwardLayers_.clear();
+    for(const edm::ParameterSet & layerCfg : forwardLayerCfg_)
+    {
+	forwardLayers_.push_back(layerFactory.createForwardLayer(fastsim::LayerFactory::POSFWD,layerCfg));
+	forwardLayers_.insert(forwardLayers_.begin(),layerFactory.createForwardLayer(fastsim::LayerFactory::NEGFWD,layerCfg));
     }
-
-    // set forward layer indices
     for(unsigned index = 0;index < forwardLayers_.size();index++)
     {
+	// set index
 	forwardLayers_[index]->setIndex(index);
-    }
-
-}
-
-void fastsim::Geometry::setMagneticFieldZ(double magneticFieldZ)
-{
-    magneticField_ = 0;
-    fixedMagneticFieldZ_ = magneticFieldZ;
-    for(auto & layer : barrelLayers_)
-    {
-        layer->setMagneticFieldZ(fixedMagneticFieldZ_);
-    }
-    for(auto & layer : forwardLayers_)
-    {
-        layer->setMagneticFieldZ(fixedMagneticFieldZ_);
-    }
-}
-
-void fastsim::Geometry::setMagneticField(const MagneticField & magneticField)
-{
-    magneticField_ = &magneticField;
-    fixedMagneticFieldZ_ = 0;
-    /*
-      barrel layers
-    */
-    double maxZ = 0;
-    if(forwardLayers_.size() > 0)
-    {
-	forwardLayers_.back()->getZ();
-    }
-    for(auto & layer : barrelLayers_)
-    {
-        layer->setMagneticField(magneticField, maxZ);
-    }
-    
-    /*
-      forward layers
-    */
-    double maxR = 0;
-    if(barrelLayers_.size() > 0)
-    {
-	barrelLayers_.back()->getRadius();
-    }
-    for(auto & layer : forwardLayers_)
-    {
-        layer->setMagneticField(magneticField, maxR);
-    }
-}
-
-const DetLayer*
-Geometry::getBarrelDetLayer(std::string layerName, const GeometricSearchTracker * geometricSearchTracker)
-{
-
-    if(!geometricSearchTracker || layerName.empty())
-    {
-	return 0;
-    }
-    
-    std::map<std::string,const std::vector<BarrelDetLayer const *> *> detLayersMap;
-    detLayersMap["BPix"] = &geometricSearchTracker->pixelBarrelLayers();
-    detLayersMap["TIB"] = &geometricSearchTracker->tibLayers();
-    detLayersMap["TOB"] = &geometricSearchTracker->tobLayers();
-    for( auto & entry : detLayersMap)
-    {
-	std::string name_ = entry.first;
-	auto detLayers = entry.second;
-	if(layerName.find(name_)==0)
+	// check order
+	if(index > 0)
 	{
-	    int index = atoi(layerName.substr(name_.size()).c_str()) -1;
-	    if(index < 0. || index > int(detLayers->size()))
+	    if(forwardLayers_[index]->getZ() <= forwardLayers_[index]->getZ())
 	    {
-		throw cms::Exception("FastSimulation/Geometry") << " bad index in activeLayer name " <<  layerName;
+		throw cms::Exception("fastsim::Geometry") 
+		    << "forward layers must be ordered according to increasing z"
+		    << "forward layer " << index 
+		    << " has z smaller than or equal to z of forward layer " << index -1;
 	    }
-	    return (*detLayers)[index];
 	}
     }
-    throw cms::Exception("FastSimulation/Geometry") << " bad naming of active layer " << layerName << std::endl;
 }
-    
 
-const DetLayer*
-Geometry::getForwardDetLayer(std::string layerName, const GeometricSearchTracker * geometricSearchTracker)
+double fastsim::Geometry::getMagneticFieldZ (const math::XYZTLorentzVector & position) const
 {
-    if(!geometricSearchTracker || layerName.empty())
-    {
-	return 0;
-    }
-
-    std::map<std::string,const std::vector<ForwardDetLayer const *> *> detLayersMap;
-    detLayersMap["negFPix"] = &geometricSearchTracker->negPixelForwardLayers();
-    detLayersMap["posFPix"] = &geometricSearchTracker->posPixelForwardLayers();
-    detLayersMap["negTID"] = &geometricSearchTracker->negTidLayers();
-    detLayersMap["posTID"] = &geometricSearchTracker->posTidLayers();
-    detLayersMap["negTEC"] = &geometricSearchTracker->negTecLayers();
-    detLayersMap["posTEC"] = &geometricSearchTracker->posTecLayers();
-
-    for( auto & entry : detLayersMap)
-    {
-	std::string name_ = entry.first;
-	auto detLayers = entry.second;
-	if(layerName.find(name_)==0)
-	{
-	    int index = atoi(layerName.substr(name_.size()).c_str()) -1;
-	    if(index < 0 || index > int(detLayers->size()))
-	    {
-		throw cms::Exception("FastSimulation/Geometry") << " bad index in activeLayer name " <<  layerName;
-	    }
-	    return (*detLayers)[index];
-	}
-    }
-    throw cms::Exception("FastSimulation/Geometry") << " bad naming of active layer " << layerName << std::endl;
+    return magneticField_->inTesla(GlobalPoint(position.X(),position.Y(),position.Z())).z();
 }
 
 std::ostream& fastsim::operator << (std::ostream& os , const fastsim::Geometry & geometry)
@@ -342,14 +169,3 @@ std::ostream& fastsim::operator << (std::ostream& os , const fastsim::Geometry &
     return os;
 }
 
-double fastsim::Geometry::getMagneticFieldZ (const math::XYZTLorentzVector & position) const
-{
-    if(magneticField_)
-    {
-	return magneticField_->inTesla(GlobalPoint(position.X(),position.Y(),position.Z())).z();
-    }
-    else
-    {
-	return fixedMagneticFieldZ_;
-    }
-}

@@ -11,7 +11,6 @@ namespace fastsim
     public:
 	HelixTrajectory(const Particle & particle,double magneticFieldZ);
 	bool crosses(const BarrelLayer & layer) const override;
-	bool crossesMaterial(const ForwardLayer & layer) const override;
 	double nextCrossingTimeC(const BarrelLayer & layer) const override;
 	void move(double deltaTimeC) override;
     private:

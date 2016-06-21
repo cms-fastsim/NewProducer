@@ -16,7 +16,6 @@ namespace fastsim
     public:
 	static std::unique_ptr<Trajectory> createTrajectory(const fastsim::Particle & particle,const double magneticFieldZ);
 	virtual bool crosses(const BarrelLayer & layer) const = 0;
-	virtual bool crossesMaterial(const ForwardLayer & layer) const = 0;
 	const math::XYZTLorentzVector & getPosition(){return position_;}
 	const math::XYZTLorentzVector & getMomentum(){return momentum_;}
 	double nextCrossingTimeC(const Layer & layer) const;

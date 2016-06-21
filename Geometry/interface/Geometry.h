@@ -12,7 +12,6 @@ class MagneticField;
 
 namespace edm { 
     class ParameterSet;
-    class ProducerBase;
     class EventSetup;
 }
 
@@ -22,21 +21,27 @@ namespace fastsim{
     {
     public:
 	/// Constructor
-	Geometry(const edm::ParameterSet& cfg,const edm::EventSetup & iSetup);
+	Geometry(const edm::ParameterSet& cfg);
 
 	/// Destructor
 	~Geometry();
+
+	void update(const edm::EventSetup & iSetup);
 
 	// Returns the magnetic field
 	double getMagneticFieldZ(const math::XYZTLorentzVector & position) const;
 
 	const std::vector<std::unique_ptr<BarrelLayer> >& barrelLayers() const { return barrelLayers_; }
 	const std::vector<std::unique_ptr<ForwardLayer> >& forwardLayers() const { return forwardLayers_; }
+	
+	double getMaxRadius() { return maxRadius_;}
+	double getMaxZ() { return maxZ_;}
+	
 
 	friend std::ostream& operator << (std::ostream& o , const fastsim::Geometry & geometry); 
 	
 	// help to nagigate through layers
-	const BarrelLayer * nextBarrelLayer(const BarrelLayer * layer) const
+	const BarrelLayer * nextLayer(const BarrelLayer * layer) const
 	{
 	    if(layer == 0)
 	    {
@@ -46,7 +51,7 @@ namespace fastsim{
 	    return nextLayerIndex < barrelLayers_.size() ? barrelLayers_[nextLayerIndex].get() : 0;
 	}
 
-	const ForwardLayer * nextForwardLayer(const ForwardLayer * layer) const
+	const ForwardLayer * nextLayer(const ForwardLayer * layer) const
 	{
 	    if(layer == 0)
 	    {
@@ -56,7 +61,7 @@ namespace fastsim{
 	    return nextLayerIndex < forwardLayers_.size() ? forwardLayers_[nextLayerIndex].get() : 0;
 	}
 
-	const BarrelLayer * previousBarrelLayer(const BarrelLayer * layer) const
+	const BarrelLayer * previousLayer(const BarrelLayer * layer) const
 	{
 	    if(layer == 0)
 	    {
@@ -65,7 +70,7 @@ namespace fastsim{
 	    return layer->index() > 0 ? barrelLayers_[layer->index() -1].get() : 0;
 	}
 
-	const ForwardLayer * previousForwardLayer(const ForwardLayer * layer) const
+	const ForwardLayer * previousLayer(const ForwardLayer * layer) const
 	{
 	    if(layer == 0)
 	    {
@@ -74,26 +79,25 @@ namespace fastsim{
 	    return layer->index() > 0 ? forwardLayers_[layer->index() -1].get() : 0;
 	}
 
-	std::vector<InteractionModel*> getInteractionModels() {return interactionModelVector_;}
+	std::vector<std::unique_ptr<InteractionModel> > & getInteractionModels() {return interactionModels_;}
 
     private:
 
-	/// set magnetic field
-	void setMagneticField(const MagneticField & magneticField);
-	void setMagneticFieldZ(double magneticFieldZ);
-
-	const DetLayer * getBarrelDetLayer(std::string layerName, const GeometricSearchTracker * theGeomSearchTracker);
-	const DetLayer * getForwardDetLayer(std::string layerName, const GeometricSearchTracker * theGeomSearchTracker);
-
-	/// The list of tracker layers (unique ptrs to avoid what is probably a bug in the compiler used by CMSSW
 	std::vector<std::unique_ptr<BarrelLayer> >barrelLayers_;
 	std::vector<std::unique_ptr<ForwardLayer> > forwardLayers_;
+	std::vector<std::unique_ptr<InteractionModel> > interactionModels_;
+	std::map<std::string,InteractionModel *> interactionModelMap_;
+	std::unique_ptr<MagneticField> ownedMagneticField_;
 
-	// Pointer to the magnetic field
-	const MagneticField * magneticField_;	
-	double fixedMagneticFieldZ_;
-	std::map<std::string,std::unique_ptr<InteractionModel> > interactionModels_;
-	std::vector<InteractionModel*> interactionModelVector_;
+	const MagneticField * magneticField_;
+	const bool useFixedMagneticFieldZ_;
+	const double fixedMagneticFieldZ_;
+	const bool useTrackerRecoGeometryRecord_;
+	const std::string trackerAlignmentLabel_;
+	const std::vector<edm::ParameterSet> barrelLayerCfg_;
+	const std::vector<edm::ParameterSet> forwardLayerCfg_;
+	const double maxRadius_;
+	const double maxZ_;
     };
     std::ostream& operator << (std::ostream& os , const fastsim::Geometry & geometry);
 }

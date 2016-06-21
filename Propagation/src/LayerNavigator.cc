@@ -129,28 +129,28 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	{
 	    if(!particleMovesInwards)
 	    {
-		nextBarrelLayer_ = geometry_->nextBarrelLayer(nextBarrelLayer_);
+		nextBarrelLayer_ = geometry_->nextLayer(nextBarrelLayer_);
 	    }
 	}
-	else if(layer == geometry_->previousBarrelLayer(nextBarrelLayer_))
+	else if(layer == geometry_->previousLayer(nextBarrelLayer_))
 	{
 	    if(particleMovesInwards)
 	    {
-		nextBarrelLayer_ = geometry_->previousBarrelLayer(nextBarrelLayer_);
+		nextBarrelLayer_ = geometry_->previousLayer(nextBarrelLayer_);
 	    }
 	}
 	else if(layer == nextForwardLayer_)
 	{
 	    if(particle.momentum().Z() > 0)
 	    {
-		nextForwardLayer_ = geometry_->nextForwardLayer(nextForwardLayer_);
+		nextForwardLayer_ = geometry_->nextLayer(nextForwardLayer_);
 	    }
 	}
-	else if(layer == geometry_->previousForwardLayer(nextForwardLayer_))
+	else if(layer == geometry_->previousLayer(nextForwardLayer_))
 	{
 	    if(particle.momentum().Z() < 0)
 	    {
-		nextForwardLayer_ = geometry_->previousForwardLayer(nextForwardLayer_);
+		nextForwardLayer_ = geometry_->previousLayer(nextForwardLayer_);
 	    }
 	}
 	layer = 0;
@@ -173,9 +173,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     {
 	layers.push_back(nextBarrelLayer_);
     }
-    if(geometry_->previousBarrelLayer(nextBarrelLayer_))
+    if(geometry_->previousLayer(nextBarrelLayer_))
     {
-	layers.push_back(geometry_->previousBarrelLayer(nextBarrelLayer_));
+	layers.push_back(geometry_->previousLayer(nextBarrelLayer_));
     }
     if(particle.momentum().Z() > 0)
     {
@@ -186,9 +186,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     }
     else
     {
-	if(geometry_->previousForwardLayer(nextForwardLayer_))
+	if(geometry_->previousLayer(nextForwardLayer_))
 	{
-	    layers.push_back(geometry_->previousForwardLayer(nextForwardLayer_));
+	    layers.push_back(geometry_->previousLayer(nextForwardLayer_));
 	}
     }
     
