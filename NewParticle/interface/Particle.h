@@ -9,16 +9,13 @@ namespace fastsim
     {
     public:
 	Particle(int pdgId,
-		 double charge,
 		 const math::XYZTLorentzVector & position,
-		 const math::XYZTLorentzVector & momentum,
-		 double remainingProperLifeTime = -1.)
+		 const math::XYZTLorentzVector & momentum)
 	    : pdgId_(pdgId)
-	    , charge_(charge)
+	    , charge_(-999.)
 	    , position_(position)
 	    , momentum_(momentum)
-	    , isStable_(false)
-	    , remainingProperLifeTime_(remainingProperLifeTime)
+	    , remainingProperLifeTime_(-999.)
 	    , simTrackIndex_(-1)
 	    , simVertexIndex_(-1)
 	    , genParticleIndex_(-1)
@@ -28,8 +25,10 @@ namespace fastsim
 	void setSimTrackIndex(int index) {simTrackIndex_ = index;}
 	void setSimVertexIndex(int index) {simVertexIndex_ = index;}
 	void setGenParticleIndex(int index){genParticleIndex_ = index;}
-	void setStable(bool isStable=true){isStable_ = isStable;}
+	void setStable(){remainingProperLifeTime_ = -1.;}
 	void setRemainingProperLifeTime(double remainingProperLifeTime){remainingProperLifeTime_ = remainingProperLifeTime;}
+	void setCharge(double charge){charge_ = charge;}
+
 
 	// ordinary getters
 	int pdgId() const {return pdgId_;}
@@ -40,7 +39,12 @@ namespace fastsim
 	int simTrackIndex() const {return simTrackIndex_;}
 	int simVertexIndex() const {return simTrackIndex_;}
 	int genParticleIndex() const {return simTrackIndex_;}
-	bool isStable() const {return isStable_;}
+	bool isStable() const {return remainingProperLifeTime_ == -1.;}
+
+	// other
+        bool chargeIsSet() const {return charge_!=999.;}
+	bool remainingProperLifeTimeIsSet() const {return remainingProperLifeTime_ != -999.;}
+	double gamma() const { return momentum().M() / momentum().E(); };
 
 	// non-const getters
 	math::XYZTLorentzVector & position() {return position_;}
@@ -50,7 +54,7 @@ namespace fastsim
 
     private:
 	const int pdgId_;
-	const double charge_;
+	double charge_;
 	math::XYZTLorentzVector position_;
 	math::XYZTLorentzVector momentum_;
 	bool isStable_;

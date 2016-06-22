@@ -5,16 +5,15 @@
 
 
 #include "FastSimulation/Layer/interface/LayerFactory.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
 
 
 #include "RecoTracker/Record/interface/TrackerRecoGeometryRecord.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/UniformEngine/src/UniformMagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
-
 #include "FastSimulation/Geometry/interface/Geometry.h"
-#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
-#include "FastSimulation/InteractionModel/interface/InteractionModel.h"
 
 #include <iostream>
 #include <map>
@@ -33,23 +32,9 @@ Geometry::Geometry(const edm::ParameterSet& cfg)
     , forwardLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
     , maxRadius_(cfg.getParameter<double>("maxRadius"))
     , maxZ_(cfg.getParameter<double>("maxZ"))
-{    
-    //----------------
-    // interaction models
-    //---------------
-    const edm::ParameterSet & modelCfgs = cfg.getParameter<edm::ParameterSet>("interactionModels");
-    for( const std::string & modelName : modelCfgs.getParameterNames())
-    {
-	const edm::ParameterSet & modelCfg = modelCfgs.getParameter<edm::ParameterSet>(modelName);
-	std::string modelClassName(modelCfg.getParameter<std::string>("className"));
-	std::unique_ptr<fastsim::InteractionModel> interactionModel(InteractionModelFactory::get()->create(modelClassName,modelName,modelCfg));
-	interactionModels_.push_back(std::move(interactionModel));
-	interactionModelMap_[modelName] = interactionModel.get();
-    }
+{};
 
-}
-
-void Geometry::update(const edm::EventSetup & iSetup)
+void Geometry::update(const edm::EventSetup & iSetup,const std::map<std::string,fastsim::InteractionModel*> & interactionModelMap)
 {
 
     //----------------
@@ -83,7 +68,7 @@ void Geometry::update(const edm::EventSetup & iSetup)
     //---------------
     fastsim::LayerFactory layerFactory(geometricSearchTracker
 				       ,*magneticField_
-				       ,interactionModelMap_
+				       ,interactionModelMap
 				       ,maxRadius_
 				       ,maxZ_);
     //---------------
@@ -150,20 +135,14 @@ std::ostream& fastsim::operator << (std::ostream& os , const fastsim::Geometry &
        << "\n## BarrelLayers:";
     for(const auto & layer : geometry.barrelLayers_)
     {
-	os << "\n   " << *layer;
-	for(auto interactionModel : layer->getInteractionModels())
-	{
-	    os << "\n      " << *interactionModel;
-	}
+	os << "\n   " << *layer
+	   << layer->getInteractionModels().size() << " interaction models";
     }
     os << "\n## ForwardLayers:";
     for(const auto & layer : geometry.forwardLayers_)
     {
-	os << "\n   " << *layer;
-	for(auto interactionModel : layer->getInteractionModels())
-	{
-	    os << "\n      " << *interactionModel;
-	}
+	os << "\n   " << *layer
+	   << layer->getInteractionModels().size() << " interaction models";
     }
     os << "\n-----------";
     return os;

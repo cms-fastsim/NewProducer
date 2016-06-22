@@ -97,7 +97,7 @@ void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer
 	if ( particle.momentum().E() < minPhotonEnergy_ ) break;
 
 	// Add a photon
-	secondaries.emplace_back(new fastsim::Particle(22,0,particle.position(),brem(particle, xmin, random)));
+	secondaries.emplace_back(new fastsim::Particle(22,particle.position(),brem(particle, xmin, random)));
 	secondaries.back()->momentum() = ROOT::Math::RotationY(theta)*secondaries.back()->momentum();
 	secondaries.back()->momentum() = ROOT::Math::RotationZ(phi)*secondaries.back()->momentum();
 	

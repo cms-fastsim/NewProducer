@@ -1,9 +1,9 @@
 #ifndef FASTSIM_GEOMETRY_H
 #define FASTSIM_GEOMETRY_H
 
-#include "FastSimulation/Layer/interface/BarrelLayer.h"
-#include "FastSimulation/Layer/interface/ForwardLayer.h"
 #include "DataFormats/Math/interface/LorentzVector.h"
+#include "FastSimulation/Layer/interface/ForwardLayer.h"
+#include "FastSimulation/Layer/interface/BarrelLayer.h"
 
 class GeometricSearchTracker;
 class MagneticField;
@@ -26,7 +26,7 @@ namespace fastsim{
 	/// Destructor
 	~Geometry();
 
-	void update(const edm::EventSetup & iSetup);
+	void update(const edm::EventSetup & iSetup,const std::map<std::string,InteractionModel*> & interactionModelMap);
 
 	// Returns the magnetic field
 	double getMagneticFieldZ(const math::XYZTLorentzVector & position) const;
@@ -79,14 +79,10 @@ namespace fastsim{
 	    return layer->index() > 0 ? forwardLayers_[layer->index() -1].get() : 0;
 	}
 
-	std::vector<std::unique_ptr<InteractionModel> > & getInteractionModels() {return interactionModels_;}
-
     private:
 
 	std::vector<std::unique_ptr<BarrelLayer> >barrelLayers_;
 	std::vector<std::unique_ptr<ForwardLayer> > forwardLayers_;
-	std::vector<std::unique_ptr<InteractionModel> > interactionModels_;
-	std::map<std::string,InteractionModel *> interactionModelMap_;
 	std::unique_ptr<MagneticField> ownedMagneticField_;
 
 	const MagneticField * magneticField_;

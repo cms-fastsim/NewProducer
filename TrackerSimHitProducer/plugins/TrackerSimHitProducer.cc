@@ -1,206 +1,195 @@
-// CONCCLUSIONS
-//    - KEEP THE GEOMETRY STRUCTURE: otherwise magnetic event handling in layerNavigator gets very inelegant
-//    - Initialization and updating:
-//         - option 1: initialize and update layers and interaction models right here
-//         - option 2: initialize and update layers and interaction models inside Geometry
-//    - A FACTORY OR MORE FACTORIES IS / ARE NOT REALLY WHAT WE WANT
-//         - interaction models need to be created in constructor (right?)
-//           (cause the products must be registered at that moment)
-//         - interaction models need to be updated / reset in produce function
-
-
-// system include files
+#include <vector>
 #include <memory>
-#include <string>
 
 // framework
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/stream/EDProducer.h"
-#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Utilities/interface/StreamID.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/LuminosityBlock.h"
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "MagneticField/UniformEngine/src/UniformMagneticField.h"
 
-// data formats
-#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
-#include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
-#include "SimDataFormats/Track/interface/SimTrackContainer.h"
-#include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
-#include "DataFormats/Common/interface/Handle.h"
-#include "DataFormats/Math/interface/LorentzVector.h"
+// tracking
+#include "TrackingTools/DetLayers/interface/DetLayer.h"
+#include "TrackingTools/GeomPropagators/interface/AnalyticalPropagator.h"
+#include "TrackingTools/TrajectoryState/interface/TrajectoryStateOnSurface.h"
+#include "TrackingTools/GeomPropagators/interface/AnalyticalPropagator.h"
+#include "TrackingTools/GeomPropagators/interface/HelixArbitraryPlaneCrossing.h"
 
 // fastsim
-#include "FastSimulation/Utilities/interface/RandomEngineAndDistribution.h"
-#include "FastSimulation/Geometry/interface/Geometry.h"
-#include "FastSimulation/Layer/interface/Layer.h"
-#include "FastSimulation/Propagation/interface/LayerNavigator.h"
+#include "FastSimulation/TrajectoryManager/interface/InsideBoundsMeasurementEstimator.h" //TODO move this
 #include "FastSimulation/NewParticle/interface/Particle.h"
-#include "FastSimulation/Particle/interface/ParticleTable.h"
+#include "FastSimulation/Layer/interface/Layer.h"
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
-#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
-#include "FastSimulation/TrackerSimHitProducer/interface/ParticleLooper.h"
+
+// data formats
+#include "DataFormats/GeometrySurface/interface/Plane.h"
+#include "DataFormats/GeometryVector/interface/GlobalVector.h"
+#include "DataFormats/GeometryVector/interface/GlobalPoint.h"
+#include "DataFormats/GeometryVector/interface/LocalVector.h"
+#include "DataFormats/GeometryVector/interface/LocalPoint.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHit.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 
 // other
+#include "Geometry/CommonDetUnit/interface/GeomDet.h"
+#include "CondFormats/External/interface/DetID.h"
+#include "FWCore/Framework/interface/ProducerBase.h"
 
-class TrackerSimHitProducer : public edm::stream::EDProducer<> {
-public:
-
-    explicit TrackerSimHitProducer(const edm::ParameterSet&);
-    ~TrackerSimHitProducer(){;}
-
-private:
-
-    virtual void produce(edm::Event&, const edm::EventSetup&) override;
-
-    edm::EDGetTokenT<edm::HepMCProduct> genParticlesToken_;
-    fastsim::Geometry detector_;
-    double beamPipeRadius_;
-    edm::IOVSyncValue iovSyncValue_;
-    static const std::string MESSAGECATEGORY;
-};
-
-const std::string TrackerSimHitProducer::MESSAGECATEGORY = "FastSimulation";
-
-TrackerSimHitProducer::TrackerSimHitProducer(const edm::ParameterSet& iConfig)
-    : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
-    , detector_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
-    , beamPipeRadius_(iConfig.getParameter<double>("beamPipeRadius"))
+namespace edm
 {
-    // register products
-    produces<edm::SimTrackContainer>();
-    produces<edm::SimVertexContainer>();
-    for(auto & interactionModel : detector_.getInteractionModels())
+    class ParameterSet;
+}
+
+typedef std::pair<const GeomDet*,TrajectoryStateOnSurface> DetWithState;
+
+namespace fastsim
+{
+    class TrackerSimHitProducer : InteractionModel
     {
-	interactionModel->registerProducts(*this);
-    }
+    public:
+	TrackerSimHitProducer(const std::string & name,const edm::ParameterSet & cfg);
+	~TrackerSimHitProducer(){;}
+	void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random) override;
+	virtual void registerProducts(edm::ProducerBase & producer) const override;
+	virtual void storeProducts(edm::Event & iEvent) override;
+	void createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector);
+    private:
+	const float onSurfaceTolerance_;
+	std::unique_ptr<edm::PSimHitContainer> simHitContainer_;
+    };
 }
 
 
-void
-TrackerSimHitProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
-{
-    LogDebug(MESSAGECATEGORY) << "   produce";
 
-    // do the iov thing
-    // TODO: check me
-    if(iovSyncValue_!=iSetup.iovSyncValue())
+fastsim::TrackerSimHitProducer::TrackerSimHitProducer(const std::string & name,const edm::ParameterSet & cfg)
+    : fastsim::InteractionModel(name)
+    , onSurfaceTolerance_(0.01) // 10 microns // hm, sure this is not 100 microns?
+    , simHitContainer_(new edm::PSimHitContainer)
+{}
+
+void fastsim::TrackerSimHitProducer::registerProducts(edm::ProducerBase & producer) const
+{
+    producer.produces<edm::PSimHitContainer>("TrackerHits");
+}
+
+void fastsim::TrackerSimHitProducer::storeProducts(edm::Event & iEvent)
+{
+    iEvent.put(std::move(simHitContainer_));
+}
+
+void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random)
+{
+    //
+    // check that layer has tracker modules
+    //
+    if(!layer.getDetLayer())
     {
-	LogDebug(MESSAGECATEGORY) << "   triggering update of event setup" << std::endl;
-	iovSyncValue_=iSetup.iovSyncValue();
-	detector_.update(iSetup);
+	return;
     }
 
-    std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
-    std::unique_ptr<edm::SimVertexContainer> output_simVertices(new edm::SimVertexContainer);
+    //
+    // create the trajectory of the particle
+    //
+    UniformMagneticField magneticField(layer.getMagneticFieldZ(particle.position())); 
+    GlobalPoint  position( particle.position().X(), particle.position().Y(), particle.position().Z());
+    GlobalVector momentum( particle.momentum().Px(), particle.momentum().Py(), particle.momentum().Pz());
+    auto plane = layer.getDetLayer()->surface().tangentPlane(position);
+    TrajectoryStateOnSurface trajectory(GlobalTrajectoryParameters( position, momentum, TrackCharge( particle.charge()), &magneticField), *plane);
+    
+    //
+    // find detectors compatible with the particle's trajectory
+    //
+    AnalyticalPropagator propagator(&magneticField, anyDirection);
+    InsideBoundsMeasurementEstimator est;
+    std::vector<DetWithState> compatibleDetectors = layer.getDetLayer()->compatibleDets(trajectory, propagator,est);
 
-    edm::ESHandle < HepPDT::ParticleDataTable > pdt;
-    iSetup.getData(pdt);
-    // NEED SENTRY?
-    ParticleTable::Sentry ptable(&(*pdt));
-
-    edm::Handle<edm::HepMCProduct> genParticles;
-    iEvent.getByToken(genParticlesToken_,genParticles);
-
-    // ?? is this the right place ??
-    RandomEngineAndDistribution random(iEvent.streamID());
-
-    fastsim::ParticleLooper particleLooper(
-	*genParticles->GetEvent()
-	,*pdt
-	,particleFilter_
-	,beamPipeRadius_
-	,output_simTracks
-	,output_simVertices);
-	
-    // loop over particles
-    LogDebug(MESSAGECATEGORY) << "################################"
-			      << "\n###############################";    
-
-    for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(); particle != 0;particle=particleLooper.nextParticle()) 
+    //
+    // loop over the compatible detectors
+    //
+    for (const auto & detectorWithState : compatibleDetectors)
     {
-	// move the particle through the layers
-	fastsim::LayerNavigator layerNavigator(detector_);
-	const fastsim::Layer * layer = 0;
-	while(layerNavigator.moveParticleToNextLayer(*particle,layer))
+	const GeomDet & detector = *detectorWithState.first;
+	const TrajectoryStateOnSurface & particleState = detectorWithState.second;
+	// if the detector has no components
+	if(detector.isLeaf())
 	{
-
-	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer
-				      << "\n   new state:" << particle;
-	    
-	    // perform interaction between layer and particle
-	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
+	    createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector);
+	}
+	else
+	{
+	    // if the detector has components
+	    for( const auto component : detector.components())
 	    {
-		LogDebug(MESSAGECATEGORY) << "   interact with" << interactionModel;
-		std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
-		interactionModel->interact(*particle,*layer,secondaries,random);
-		particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
+		createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);
 	    }
-
-	    // kinematic cuts
-	    // temporary: break after 100 ns
-	    if(particle->position().T() > 100)
-	    {
-		break;
-	    }
-	    
-	    LogDebug(MESSAGECATEGORY) << "--------------------------------"
-				      << "\n-------------------------------";
-
 	}
-
-	// do decays
-	if(particle->remainingProperLifeTime() == 0.)
-	{
-	    //std::vector<fastsim::Particle> secondaries;
-	    //decayer.decay(*particle,secondaries);
-	    //addSecondaries(*particle,particleIndex,secondaries);
-	}
-	
-	LogDebug(MESSAGECATEGORY) << "################################"
-				  << "\n###############################";
-    }
-
-    // store simHits and simTracks
-    iEvent.put(particleLooper.harvestSimTracks());
-    iEvent.put(particleLooper.harvestSimVertices());
-    // store products of interaction models, i.e. simHits
-    for(auto & interactionModel : detector_.getInteractionModels())
-    {
-	interactionModel->storeProducts(iEvent);
     }
 }
 
-// TODO: this should actually become a member function of FSimEvent
-//       to be used by decays as well
-/*
-void TrackerSimHitProducer::addSecondaries(const fastsim::Particle parent,int parentIndex,std::vector<fastsim::Particle> secondaries)
+void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector)
 {
-    // add secondaries to the event
-    if(secondaries.size() > 0)
+
+    //
+    // determine position and momentum of particle in the coordinate system of the detector
+    //
+    LocalPoint localPosition;
+    LocalVector localMomentum;
+    // if the particle is close enough, no further propagation is needed
+    if ( fabs( detector.toLocal(particle.globalPosition()).z()) < onSurfaceTolerance_) 
     {
-	// TODO: probably want to get rid of the TLorentzVector in Particle etc.
-	//    see https://root.cern.ch/root/html/MATH_GENVECTOR_Index.html
-	//    it got all kinds of methods to do transformations
-	int vertexIndex = simEvent_.addSimVertex(math::XYZTLorentzVector(parent.position().X(),
-									 parent.position().Y(),
-									 parent.position().Z(),
-									 parent.position().T())
-						 simTrackIndex);
-	// TODO: deal with closest charged daughter
-	for(const auto & secondary : secondaries)
+	localPosition = particle.localPosition();
+	localMomentum = particle.localMomentum();
+    }
+    // else, propagate 
+    else 
+    {
+	// find crossing of particle with 
+	HelixArbitraryPlaneCrossing crossing( particle.globalPosition().basicVector(),
+					      particle.globalMomentum().basicVector(),
+					      particle.transverseCurvature(),
+					      anyDirection);
+	std::pair<bool,double> path = crossing.pathLength(detector.surface());
+	// case propagation succeeds
+	if (path.first) 	
 	{
-	    RawParticle _secondary(secondary.pdgId(),
-				   math::XYZTLorentzVector(secondary.momentum.X(),
-							   secondary.momentum.Y()
-							   secondary.momentum.Z()
-							   secondary.momentum.E()));
-	    simEvent_.addSimTrack(_secondary,vertexIndex);
+	    localPosition = detector.toLocal( GlobalPoint( crossing.position(path.second)));
+	    localMomentum = detector.toLocal( GlobalVector( crossing.direction(path.second)));
+	    localMomentum = localMomentum.unit() * particle.localMomentum().mag();
+	}
+	// case propagation fails
+	else
+	{
+	    return;
 	}
     }
+
+    // 
+    // find entry and exit point of particle in detector
+    //
+    const Plane& detectorPlane = detector.surface();
+    float halfThick = 0.5*detectorPlane.bounds().thickness();
+    float pZ = localMomentum.z();
+    LocalPoint entry = localPosition + (-halfThick/pZ) * localMomentum;
+    LocalPoint exit = localPosition + halfThick/pZ * localMomentum;
+    float tof = particle.globalPosition().mag() / 30. ; // in nanoseconds, FIXME: very approximate
+    
+    //
+    // make sure the simhit is physically on the module
+    //
+    double boundX = detectorPlane.bounds().width()/2.;
+    double boundY = detectorPlane.bounds().length()/2.;
+    // Special treatment for TID and TEC trapeziodal modules
+    unsigned subdet = DetId(detector.geographicalId()).subdetId(); 
+    if ( subdet == 4 || subdet == 6 ) 
+	boundX *=  1. - localPosition.y()/detectorPlane.position().perp();
+    if(fabs(localPosition.x()) > boundX  || fabs(localPosition.y()) > boundY )
+    {
+	return;
+    }
+
+    //
+    // create the hit
+    //
+    double energyDeposit = 0.; // do something about the energy deposit
+    simHitContainer_->emplace_back( entry, exit, localMomentum.mag(), tof, energyDeposit, pdgId,
+				   detector.geographicalId().rawId(),simTrackId,
+				   localMomentum.theta(),
+				   localMomentum.phi());
 }
-*/
-DEFINE_FWK_MODULE(TrackerSimHitProducer);

@@ -84,9 +84,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     // particle moves inwards?
     bool particleMovesInwards = particle.momentum().X()*particle.position().X() + particle.momentum().Y()*particle.position().Y() < 0;
     
-    /*
-      update nextBarrelLayer and nextForwardLayer
-    */
+    //
+    //  update nextBarrelLayer and nextForwardLayer
+    //
 
     // first time
     if(!layer)
@@ -94,11 +94,11 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	
 	LogDebug(MESSAGECATEGORY) << "      called for first time";
 
-	/*
-	  find the narrowest barrel layers with
-	  layer.r > particle.r
-	  assume barrel layers are ordered with increasing r
-	*/
+	//
+	// find the narrowest barrel layers with
+	// layer.r > particle.r
+	// assume barrel layers are ordered with increasing r
+	//
 	for(const auto & layer : geometry_->barrelLayers())
 	{
 	    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
@@ -108,10 +108,10 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	    }
 	}
 
-	/*
-	  find the forward layer with smallest z with
-	  layer.z > particle z
-	*/
+	// 
+	//  find the forward layer with smallest z with
+	//  layer.z > particle z
+	//
 	for(const auto & layer : geometry_->forwardLayers())
 	{
 	    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
@@ -121,7 +121,10 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	    }
 	}
     }
+
+    //
     // last move worked, let's update
+    //
     else
     {
 	LogDebug(MESSAGECATEGORY) << "      ordinary call";
@@ -156,10 +159,12 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	layer = 0;
     }
 
-    /*
-      move particle to first hit with one of the enclosing layers
-    */
+    //
+    // move particle to first hit with one of the enclosing layers
+    //
     
+    // TODO: for straight tracks you KNOW in advance wether next or previous barrel layer will be hit: use that information!
+
     
     LogDebug(MESSAGECATEGORY) << "   nextBarrelLayer index: " << (nextBarrelLayer_ ? nextBarrelLayer_->index() : -1)
 			      << "\n   nextForwardLayer index: " << (nextForwardLayer_ ? nextForwardLayer_->index() : -1);
@@ -192,6 +197,8 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	}
     }
     
+
+    // TODO : review time unit: ct or just t?
     double deltaTime = -1;
     for(auto _layer : layers)
     {
@@ -202,6 +209,13 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 	    layer = _layer;
 	    deltaTime = tempDeltaTime;
 	}
+    }
+    double properDeltaTime = deltaTime / particle.gamma();
+    // TODO: this is not very ellegant, particle->remainingProperLifeTime() should not return negative value in case it is stable...
+    if(!particle.isStable() && properDeltaTime > particle.remainingProperLifeTime())
+    {
+	deltaTime = particle.remainingProperLifeTime() * particle.gamma();
+	particle.setRemainingProperLifeTime(0.);
     }
     
     // move particle in space, time and momentum

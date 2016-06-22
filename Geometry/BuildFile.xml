@@ -1,7 +1,6 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
 <use name="FWCore/Utilities"/>
-<use name="FastSimulation/InteractionModel"/>
 <use name="FastSimulation/Layer"/>
 <use name="MagneticField/Engine"/>
 <use name="MagneticField/UniformEngine"/>

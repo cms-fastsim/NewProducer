@@ -1,14 +1,13 @@
-#include "FastSimulation/TrackerSimHitProducer/interface/ParticleLooper.h"
+#include "FastSimulation/FastSimProducer/interface/ParticleLooper.h"
 
 #include "HepMC/GenEvent.h"
 #include "HepMC/Units.h"
-#include "CLHEP/Units/SystemOfUnits.h"
-#include "CLHEP/Units/PhysicalConstants.h"
+#include "HepPDT/ParticleDataTable.hh"
 
 #include "FastSimulation/NewParticle/interface/Particle.h"
-#include "FastSimulation/NewParticle/interface/ParticleFilter.h"
+#include "FastSimulation/FastSimProducer/interface/ParticleFilter.h"
+#include "FastSimulation/Constants/interface/Constants.h"
 
-#include "HepPDT/ParticleDataTable.hh"
 #include "SimDataFormats/Track/interface/SimTrack.h"
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -27,7 +26,7 @@ fastsim::ParticleLooper::ParticleLooper(
     , genParticleIndex_(0)
     , particleDataTable_(&particleDataTable)
     , beamPipeRadius2_(beamPipeRadius*beamPipeRadius)
-    , particleFilter_(particleFilter)
+    , particleFilter_(&particleFilter)
     , simTracks_(std::move(simTracks))
     , simVertices_(std::move(simVertices))
     // prepare unit convsersions
@@ -75,22 +74,38 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     }
 
     // if filter does not accept, skip particle
-    if(!particleFilter_->accepts(particle))
+    if(!particleFilter_->accepts(*particle))
     {
 	return nextParticle(random);
     }
 
-    // provide a lifetime for the particle if not yet done
-    if(!particle->isStable() && particle->remainingProperLifeTime() < 0.)
+    if(!particle->remainingProperLifeTimeIsSet() || !particle->chargeIsSet() )
     {
-	double averageLifeTime = particleData()->cTau()/CLHEP::c_light/ns;
-	if(averageLifeTime > 1e25 ) // ridiculously safe
+	// retrieve the particle data
+	const HepPDT::ParticleData * particleData = particleDataTable_->particle( particle->pdgId() );
+	if(!particleData)
 	{
-	    particle->setStable();
+	    throw cms::Exception("fastsim::ParticleLooper") << "unknown pdg id" << std::endl;
 	}
-	else
+
+	// set lifetime
+	if(!particle->remainingProperLifeTimeIsSet())
 	{
-	    particle->setRemainingProperLifeTime(-log(random.flatShoot())*);
+	    double averageLifeTime = particleData->lifetime()/fastsim::Constants::speedOfLight; //!!! units
+	    if(averageLifeTime > 1e25 ) // ridiculously safe
+	    {
+		particle->setStable();
+	    }
+	    else
+	    {
+		particle->setRemainingProperLifeTime(-log(random.flatShoot())*averageLifeTime);
+	    }
+	}
+
+	// set charge
+	if(!particle->chargeIsSet())
+	{
+	    particle->setCharge(particleData->charge());
 	}
     }
 
@@ -111,7 +126,7 @@ void fastsim::ParticleLooper::addSecondaries(
 {
 
     // vertex must be within the accepted volume
-    if(!particleFilter_.accepts(vertexPosition))
+    if(!particleFilter_->accepts(vertexPosition))
     {
 	return;
     }
@@ -176,24 +191,9 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
 	    continue;
 	}
 	
-	// retrieve the particle data
-	const HepPDT::ParticleData * particleData = particleDataTable_->particle( particle.pdg_id() );
-	if(!particleData)
-	{
-	    throw cms::Exception("fastsim::ParticleLooper") << "unknown pdg id" << std::endl;
-	}
-	
-	// try to get the life time of the particle from the genEvent
-	double properLifeTime = -1.;
-	if(endVertex)
-	{
-	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
-	    properLifeTime = labFrameLifeTime * particle.momentum().m() / particle.momentum().e();
-	}
-	
 	// make the particle
 	std::unique_ptr<Particle> newParticle(
-	    new Particle(particle.pdg_id(),particleData->charge(),
+	    new Particle(particle.pdg_id(),
 			 math::XYZTLorentzVector(productionVertex.position().x()*lengthUnitConversionFactor_,
 						 productionVertex.position().y()*lengthUnitConversionFactor_,
 						 productionVertex.position().z()*lengthUnitConversionFactor_,
@@ -201,10 +201,16 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
 			 math::XYZTLorentzVector(particle.momentum().x()*momentumUnitConversionFactor_,
 						 particle.momentum().y()*momentumUnitConversionFactor_,
 						 particle.momentum().z()*momentumUnitConversionFactor_,
-						 particle.momentum().e()*momentumUnitConversionFactor_),
-			 properLifeTime));
+						 particle.momentum().e()*momentumUnitConversionFactor_)));
 	newParticle->setGenParticleIndex(genParticleIndex_);
-	
+
+	// try to get the life time of the particle from the genEvent
+	if(endVertex)
+	{
+	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
+	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
+	}
+
 	// and return
 	return std::move(newParticle);
     }
