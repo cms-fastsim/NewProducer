@@ -30,8 +30,8 @@ Geometry::Geometry(const edm::ParameterSet& cfg)
     , trackerAlignmentLabel_(cfg.getUntrackedParameter<std::string>("trackerAlignmentLabel",""))
     , barrelLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers"))
     , forwardLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
-    , maxRadius_(cfg.getParameter<double>("maxRadius"))
-    , maxZ_(cfg.getParameter<double>("maxZ"))
+    , maxRadius_(cfg.getUntrackedParameter<double>("radius",0.))
+    , maxZ_(cfg.getUntrackedParameter<double>("z",0.))
 {};
 
 void Geometry::update(const edm::EventSetup & iSetup,const std::map<std::string,fastsim::InteractionModel*> & interactionModelMap)
@@ -86,12 +86,13 @@ void Geometry::update(const edm::EventSetup & iSetup,const std::map<std::string,
 	// check order
 	if(index > 0)
 	{
-	    if(barrelLayers_[index]->getRadius() <= barrelLayers_[index]->getRadius())
+	    if(barrelLayers_[index]->getRadius() <= barrelLayers_[index-1]->getRadius())
 	    {
 		throw cms::Exception("fastsim::Geometry") 
 		    << "barrel layers must be ordered according to increading radius"
 		    << "\nbarrel layer " << index 
-		    << " has radius smaller than or equal to radius of barrel layer " << index -1;
+		    << " has radius smaller than or equal to radius of barrel layer " << index -1
+            << " (" << barrelLayers_[index]->getRadius() << "/" << barrelLayers_[index-1]->getRadius() << ")";
 	    }
 	}
     }
@@ -112,7 +113,7 @@ void Geometry::update(const edm::EventSetup & iSetup,const std::map<std::string,
 	// check order
 	if(index > 0)
 	{
-	    if(forwardLayers_[index]->getZ() <= forwardLayers_[index]->getZ())
+	    if(forwardLayers_[index]->getZ() <= forwardLayers_[index-1]->getZ())
 	    {
 		throw cms::Exception("fastsim::Geometry") 
 		    << "forward layers must be ordered according to increasing z"

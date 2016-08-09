@@ -17,7 +17,7 @@ namespace fastsim
 {
     class Layer;
     class Particle;
-    class InteractionModel
+    class InteractionModel 
     {
     public:
 	InteractionModel(std::string name)

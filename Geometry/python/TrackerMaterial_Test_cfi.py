@@ -5,15 +5,15 @@ _trackerMaterialInteractionModels = cms.untracked.vstring("simpleLayerHits","bre
 # Material effects to be simulated in the tracker material and associated cuts 
 TrackerMaterialBlock = cms.PSet(
     TrackerMaterial = cms.PSet(
-        magneticFieldZ = cms.double(0.),
+        magneticFieldZ = cms.untracked.double(0.),
         useTrackerRecoGeometryRecord = cms.untracked.bool(False),
-        trackerAlignmentLabel = cms.string("MisAligned"),
+        trackerAlignmentLabel = cms.untracked.string("MisAligned"),
         interactionModels = cms.PSet(
             simpleLayerHits = cms.PSet(
-                className = cms.string("SimpleLayerHitProducer")
+                className = cms.string("simpleLayerHits")
                 ),
             bremsstrahlung = cms.PSet(
-                className = cms.string("Bremsstrahlung"),
+                className = cms.string("bremsstrahlung"),
                 minPhotonEnergy = cms.double(0.1),
                 minPhotonEnergyFraction = cms.double(0.005)
                 )
@@ -33,7 +33,7 @@ TrackerMaterialBlock = cms.PSet(
                 ),
             cms.PSet(
                 radius = cms.untracked.double(100.),
-                limits = cms.untracked.vdouble(0.0,100.),
+                limits = cms.untracked.vdouble(00.0,100.),
                 thickness = cms.untracked.vdouble(0.1),
                 interactionModels = _trackerMaterialInteractionModels
                 ),

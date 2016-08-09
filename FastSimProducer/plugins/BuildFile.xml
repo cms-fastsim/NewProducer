@@ -9,6 +9,17 @@
 <use name="FastSimulation/Geometry"/>
 <use name="FastSimulation/Propagation"/>
 <use name="FastSimulation/Decayer"/>
+<use name="FastSimulation/TrackerSimHitProducer"/>
+<use name="TrackingTools/DetLayers"/>
+<use name="TrackingTools/TrajectoryState"/>
+<use name="TrackingTools/GeomPropagators"/>
+<use name="FastSimulation/TrajectoryManager"/>
+<use name="MagneticField/UniformEngine"/>
+<use name="DataFormats/Math"/>
+<use name="FastSimulation/Layer"/>
+<use name="FastSimulation/Particle"/>
 <use name="hepmc"/>
 <use name="clhep"/>
 <flags EDM_PLUGIN="1"/>
+
+

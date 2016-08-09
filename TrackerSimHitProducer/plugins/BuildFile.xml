@@ -1,3 +1,4 @@
+<use name="FastSimulation/TrackerSimHitProducer"/>
 <use name="TrackingTools/DetLayers"/>
 <use name="TrackingTools/TrajectoryState"/>
 <use name="TrackingTools/GeomPropagators"/>

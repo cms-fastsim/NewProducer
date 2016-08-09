@@ -46,7 +46,7 @@ fastsim::Bremsstrahlung::Bremsstrahlung(const std::string & name,const edm::Para
 void fastsim::Bremsstrahlung::interact(fastsim::Particle & particle, const Layer & layer,std::vector<std::unique_ptr<fastsim::Particle> > & secondaries,const RandomEngineAndDistribution & random)
 {
     // only consider electrons and positrons
-    if(!abs(particle.pdgId())==11)
+    if(abs(particle.pdgId())!=11)
     {
 	return;
     }

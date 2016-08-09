@@ -27,7 +27,7 @@ process.source = cms.Source("PoolSource",
 # configure random number generator for simhit production
 process.RandomNumberGeneratorService = cms.Service(
     "RandomNumberGeneratorService",
-    trackerSimHits = cms.PSet(
+    fastSimProducer = cms.PSet(
         initialSeed = cms.untracked.uint32(234567),
         engineName = cms.untracked.string('TRandom3')
         )
@@ -36,10 +36,10 @@ process.RandomNumberGeneratorService = cms.Service(
 
 
 # load simhit producer
-process.load("FastSimulation.TrackerSimHitProducer.trackerSimHits_cff")
+process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
 
 # define a path to run
-process.demo = cms.Path(process.trackerSimHits)
+process.demo = cms.Path(process.fastSimProducer)
 
 # debugging options
 # debug messages will only be printed for packages compiled with following command
@@ -51,6 +51,6 @@ process.MessageLogger = cms.Service(
     cout = cms.untracked.PSet(
         threshold = cms.untracked.string('DEBUG'),
         ),
-    debugModules = cms.untracked.vstring('trackerSimHits')
+    debugModules = cms.untracked.vstring('fastSimProducer')
     )
 

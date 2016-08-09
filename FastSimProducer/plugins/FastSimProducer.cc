@@ -63,7 +63,7 @@ const std::string FastSimProducer::MESSAGECATEGORY = "FastSimulation";
 FastSimProducer::FastSimProducer(const edm::ParameterSet& iConfig)
     : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
     , geometry_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
-    , beamPipeRadius_(iConfig.getParameter<double>("beamPipeRadius"))
+    , beamPipeRadius_(iConfig.getUntrackedParameter<double>("beamPipeRadius",3.0))
     , particleFilter_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
 {
 

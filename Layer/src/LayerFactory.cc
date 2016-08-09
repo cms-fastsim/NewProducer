@@ -56,15 +56,15 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
 {
 
     // some flags for internal usage
-    bool isForward = false;
+    bool isForward = true;
     bool isOnPositiveSide = false;
     if(layerType == BARREL)
     {
-	isForward = true;
+	   isForward = false;
     }
     else if(layerType == POSFWD)
     {
-	isOnPositiveSide = true;
+	   isOnPositiveSide = true;
     }
 
     // -------------------------------
@@ -91,34 +91,34 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     std::string positionParameterName = (isForward ? "z" : "radius");
     if(cfg.exists(positionParameterName))
     {
-	position = fabs(cfg.getParameter<double>(positionParameterName));
-	if(!isOnPositiveSide)
-	{
-	    position = -position;
-	}
+    	position = fabs(cfg.getUntrackedParameter<double>(positionParameterName));
+    	if(isForward && !isOnPositiveSide)
+    	{
+    	    position = -position;
+    	}
     }
     // then try extracting from detLayer
     else if(detLayer)
     {
-	if(isForward)
-	{
-	    position = static_cast<ForwardDetLayer const*>(detLayer)->specificSurface().position().z();
-	}
-	else
-	{
-            position = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
-	}
+    	if(isForward)
+    	{
+    	    position = static_cast<ForwardDetLayer const*>(detLayer)->specificSurface().position().z();
+    	}
+    	else
+    	{
+                position = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
+    	}
     }
     // then throw error
     else
     {
-	std::string cfgString;
-	cfg.allToString(cfgString);
-	throw cms::Exception("fastsim::LayerFactory") << " no way to extract a" 
-						      << (isForward ? "position" : "radius") << " for this " 
-						      << (isForward ? "forward" : "barrel") << " layer :\n"
-						      << cfgString;
-    }
+    	std::string cfgString;
+    	cfg.allToString(cfgString);
+    	throw cms::Exception("fastsim::LayerFactory") << "Cannot extract a " 
+    						      << (isForward ? "position" : "radius") << " for this " 
+    						      << (isForward ? "forward" : "barrel") << " layer :\n"
+    						      << cfgString;
+        }
     
     // -----------------------------
     // create the layers
@@ -140,7 +140,7 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     // -----------------------------
 
     // Get limits
-    const std::vector<double> & limits = cfg.getParameter<std::vector<double> >("limits");
+    const std::vector<double> & limits = cfg.getUntrackedParameter<std::vector<double> >("limits");
     // ,and check order.
     for(unsigned index = 1;index < limits.size();index++)
     {
@@ -154,7 +154,7 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
 	}
     }
     // Get thickness values
-    const std::vector<double> & thickness = cfg.getParameter<std::vector<double> >("thickness");
+    const std::vector<double> & thickness = cfg.getUntrackedParameter<std::vector<double> >("thickness");
     // , and check compatibility with limits
     if(limits.size() < 2 || thickness.size() != limits.size() - 1)
     {
@@ -198,12 +198,12 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     std::vector<std::string> interactionModelLabels = cfg.getUntrackedParameter<std::vector<std::string> >("interactionModels");
     for(const auto & label : interactionModelLabels)
     {
-	std::map<std::string,fastsim::InteractionModel *>::const_iterator interactionModel = interactionModelMap_->find(label);
-	if(interactionModel == interactionModelMap_->end())
-	{
-	    throw cms::Exception("fastsim::LayerFactory") << "unknown interaction model '" << label << "'";
-	}
-	layer->interactionModels_.push_back(interactionModel->second);
+    	std::map<std::string,fastsim::InteractionModel *>::const_iterator interactionModel = interactionModelMap_->find(label);
+    	if(interactionModel == interactionModelMap_->end())
+    	{
+    	    throw cms::Exception("fastsim::LayerFactory") << "unknown interaction model '" << label << "'";
+    	}
+    	layer->interactionModels_.push_back(interactionModel->second);
     }
 
     // -----------------------------

@@ -26,10 +26,9 @@ fastsim::ParticleFilter::ParticleFilter(const edm::ParameterSet & cfg)
 
 bool fastsim::ParticleFilter::accepts(const fastsim::Particle & particle) const
 {
-
     int pId = abs(particle.pdgId());
 
-    // skipp invisible particles
+    // skip invisible particles
     if(pId == 12 || pId == 14 || pId == 16 || pId == 1000022)
     {
 	return false;
