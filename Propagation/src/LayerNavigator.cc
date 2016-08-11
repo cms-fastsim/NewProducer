@@ -70,11 +70,13 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 
     // if the layer is provided, the particle must be on it
     if(layer)
-    {
-	if(!layer->isOnSurface(particle.position()))
-	{
-	    throw cms::Exception("FastSimulation") << "If layer is prodvided, particle must be on layer";
-	}
+    {	
+		if(!layer->isOnSurface(particle.position()))
+		{
+		    throw cms::Exception("FastSimulation") << "If layer is provided, particle must be on layer."
+		    << "\n   Layer: " << *layer
+		    << "\n   Particle: " << particle;
+		}
     }
 
     // magnetic field at the current position of the particle
@@ -90,73 +92,71 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 
     // first time
     if(!layer)
-    {
-	
-	LogDebug(MESSAGECATEGORY) << "      called for first time";
+    {		
+		LogDebug(MESSAGECATEGORY) << "      called for first time";
 
-	//
-	// find the narrowest barrel layers with
-	// layer.r > particle.r
-	// assume barrel layers are ordered with increasing r
-	//
-	for(const auto & layer : geometry_->barrelLayers())
-	{
-	    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
-	    {
-		nextBarrelLayer_ = layer.get();
-		break;
-	    }
-	}
+		//
+		// find the narrowest barrel layers with
+		// layer.r > particle.r
+		// assume barrel layers are ordered with increasing r
+		//
+		for(const auto & layer : geometry_->barrelLayers())
+		{
+		    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
+		    {
+			nextBarrelLayer_ = layer.get();
+			break;
+		    }
+		}
 
-	// 
-	//  find the forward layer with smallest z with
-	//  layer.z > particle z
-	//
-	for(const auto & layer : geometry_->forwardLayers())
-	{
-	    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
-	    {
-		nextForwardLayer_ = layer.get();
-		break;
-	    }
-	}
+		// 
+		//  find the forward layer with smallest z with
+		//  layer.z > particle z
+		//
+		for(const auto & layer : geometry_->forwardLayers())
+		{
+		    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
+		    {
+			nextForwardLayer_ = layer.get();
+			break;
+		    }
+		}
     }
-
     //
     // last move worked, let's update
     //
     else
     {
-	LogDebug(MESSAGECATEGORY) << "      ordinary call";
-	if(layer == nextBarrelLayer_)
-	{
-	    if(!particleMovesInwards)
-	    {
-		nextBarrelLayer_ = geometry_->nextLayer(nextBarrelLayer_);
-	    }
-	}
-	else if(layer == geometry_->previousLayer(nextBarrelLayer_))
-	{
-	    if(particleMovesInwards)
-	    {
-		nextBarrelLayer_ = geometry_->previousLayer(nextBarrelLayer_);
-	    }
-	}
-	else if(layer == nextForwardLayer_)
-	{
-	    if(particle.momentum().Z() > 0)
-	    {
-		nextForwardLayer_ = geometry_->nextLayer(nextForwardLayer_);
-	    }
-	}
-	else if(layer == geometry_->previousLayer(nextForwardLayer_))
-	{
-	    if(particle.momentum().Z() < 0)
-	    {
-		nextForwardLayer_ = geometry_->previousLayer(nextForwardLayer_);
-	    }
-	}
-	layer = 0;
+		LogDebug(MESSAGECATEGORY) << "      ordinary call";
+		if(layer == nextBarrelLayer_)
+		{
+		    if(!particleMovesInwards)
+		    {
+				nextBarrelLayer_ = geometry_->nextLayer(nextBarrelLayer_);
+		    }
+		}
+		else if(layer == geometry_->previousLayer(nextBarrelLayer_))
+		{
+		    if(particleMovesInwards)
+		    {
+				nextBarrelLayer_ = geometry_->previousLayer(nextBarrelLayer_);
+		    }
+		}
+		else if(layer == nextForwardLayer_)
+		{
+		    if(particle.momentum().Z() > 0)
+		    {
+				nextForwardLayer_ = geometry_->nextLayer(nextForwardLayer_);
+		    }
+		}
+		else if(layer == geometry_->previousLayer(nextForwardLayer_))
+		{
+		    if(particle.momentum().Z() < 0)
+		    {
+				nextForwardLayer_ = geometry_->previousLayer(nextForwardLayer_);
+		    }
+		}
+		layer = 0;
     }
 
     //
@@ -176,25 +176,25 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     std::vector<const fastsim::Layer*> layers;
     if(nextBarrelLayer_) 
     {
-	layers.push_back(nextBarrelLayer_);
+		layers.push_back(nextBarrelLayer_);
     }
     if(geometry_->previousLayer(nextBarrelLayer_))
     {
-	layers.push_back(geometry_->previousLayer(nextBarrelLayer_));
+		layers.push_back(geometry_->previousLayer(nextBarrelLayer_));
     }
     if(particle.momentum().Z() > 0)
     {
-	if(nextForwardLayer_)
-	{
-	    layers.push_back(nextForwardLayer_);
-	}
+		if(nextForwardLayer_)
+		{
+		    layers.push_back(nextForwardLayer_);
+		}
     }
     else
     {
-	if(geometry_->previousLayer(nextForwardLayer_))
-	{
-	    layers.push_back(geometry_->previousLayer(nextForwardLayer_));
-	}
+		if(geometry_->previousLayer(nextForwardLayer_))
+		{
+		    layers.push_back(geometry_->previousLayer(nextForwardLayer_));
+		}
     }
     
 
@@ -202,29 +202,31 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     double deltaTime = -1;
     for(auto _layer : layers)
     {
-	double tempDeltaTime = trajectory->nextCrossingTimeC(*_layer);
-	LogDebug(MESSAGECATEGORY) << "   particle crosses layer " << *_layer << " at time " << tempDeltaTime;
-	if(tempDeltaTime > 0 && (layer == 0 || tempDeltaTime< deltaTime))
-	{
-	    layer = _layer;
-	    deltaTime = tempDeltaTime;
-	}
+		double tempDeltaTime = trajectory->nextCrossingTimeC(*_layer);
+		LogDebug(MESSAGECATEGORY) << "   particle crosses layer " << *_layer << " at time " << tempDeltaTime;
+		if(tempDeltaTime > 0 && (layer == 0 || tempDeltaTime<deltaTime || deltaTime < 0))
+		{
+		    layer = _layer;
+		    deltaTime = tempDeltaTime;
+		}
     }
+
     double properDeltaTime = deltaTime / particle.gamma();
+
     // TODO: this is not very ellegant, particle->remainingProperLifeTime() should not return negative value in case it is stable...
     if(!particle.isStable() && properDeltaTime > particle.remainingProperLifeTime())
     {
-	deltaTime = particle.remainingProperLifeTime() * particle.gamma();
-	particle.setRemainingProperLifeTime(0.);
+		deltaTime = particle.remainingProperLifeTime() * particle.gamma();
+		particle.setRemainingProperLifeTime(0.);
     }
     
     // move particle in space, time and momentum
     if(layer)
     {
-	trajectory->move(deltaTime);
-	particle.position() = trajectory->getPosition();
-	particle.momentum() = trajectory->getMomentum();
-	LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *layer;
+		trajectory->move(deltaTime);
+		particle.position() = trajectory->getPosition();
+		particle.momentum() = trajectory->getMomentum();
+		LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *layer;
     }
 
     // return true / false if propagations succeeded /failed

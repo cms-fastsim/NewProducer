@@ -21,12 +21,12 @@ namespace fastsim
     {
     public:
 	InteractionModel(std::string name)
-	    : name_(name){;}
+	    : name_(name){}
 	virtual ~InteractionModel(){;}
 	virtual void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random) = 0;
 	virtual void registerProducts(edm::ProducerBase & producer) const{;}
 	virtual void storeProducts(edm::Event & iEvent) {;}
-	const std::string & getName(){return name_;}
+	const std::string getName(){return name_;}
  	friend std::ostream& operator << (std::ostream& o , const InteractionModel & model); 
    private:
 	const std::string name_;

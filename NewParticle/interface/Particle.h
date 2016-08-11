@@ -32,7 +32,7 @@ namespace fastsim
 
 	// ordinary getters
 	int pdgId() const {return pdgId_;}
-        double charge() const {return charge_;}
+    double charge() const {return charge_;}
 	const math::XYZTLorentzVector & position() const {return position_;}
 	const math::XYZTLorentzVector & momentum() const {return momentum_;}
 	double remainingProperLifeTime() const {return remainingProperLifeTime_;}
@@ -42,7 +42,7 @@ namespace fastsim
 	bool isStable() const {return remainingProperLifeTime_ == -1.;}
 
 	// other
-        bool chargeIsSet() const {return charge_!=999.;}
+    bool chargeIsSet() const {return charge_!=999.;}
 	bool remainingProperLifeTimeIsSet() const {return remainingProperLifeTime_ != -999.;}
 	double gamma() const { return momentum().M() / momentum().E(); };
 
@@ -57,7 +57,6 @@ namespace fastsim
 	double charge_;
 	math::XYZTLorentzVector position_;
 	math::XYZTLorentzVector momentum_;
-	bool isStable_;
 	double remainingProperLifeTime_;
 	int simTrackIndex_;
 	int simVertexIndex_;

@@ -63,50 +63,48 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     // retrieve particle from buffer
     if(particleBuffer_.size() > 0)
     {
-	particle = std::move(particleBuffer_.back());
-	particleBuffer_.pop_back();
+    	particle = std::move(particleBuffer_.back());
+    	particleBuffer_.pop_back();
     }
-
     // or from genParticle list
     else
     {
-	particle = nextGenParticle();
+	   particle = nextGenParticle();
     }
 
     // if filter does not accept, skip particle
     if(!particleFilter_->accepts(*particle))
     {
-	return nextParticle(random);
+	   return nextParticle(random);
     }
-
     if(!particle->remainingProperLifeTimeIsSet() || !particle->chargeIsSet() )
     {
-	// retrieve the particle data
-	const HepPDT::ParticleData * particleData = particleDataTable_->particle( particle->pdgId() );
-	if(!particleData)
-	{
-	    throw cms::Exception("fastsim::ParticleLooper") << "unknown pdg id" << std::endl;
-	}
+    	// retrieve the particle data
+    	const HepPDT::ParticleData * particleData = particleDataTable_->particle(HepPDT::ParticleID(particle->pdgId()));
+    	if(!particleData)
+    	{
+    	    throw cms::Exception("fastsim::ParticleLooper") << "unknown pdg id" << std::endl;
+    	}
 
-	// set lifetime
-	if(!particle->remainingProperLifeTimeIsSet())
-	{
-	    double averageLifeTime = particleData->lifetime()/fastsim::Constants::speedOfLight; //!!! units
-	    if(averageLifeTime > 1e25 ) // ridiculously safe
-	    {
-		particle->setStable();
-	    }
-	    else
-	    {
-		particle->setRemainingProperLifeTime(-log(random.flatShoot())*averageLifeTime);
-	    }
-	}
+    	// set lifetime
+    	if(!particle->remainingProperLifeTimeIsSet())
+    	{
+    	    double averageLifeTime = particleData->lifetime().value()/fastsim::Constants::speedOfLight; //!!! units: particleData returns units in c*t
+    	    if(averageLifeTime > 1e25 || averageLifeTime < 1e-25) // ridiculously safe // particleData seems to return 0 in case particle is stable!
+    	    {
+    		  particle->setStable();
+    	    }
+    	    else
+    	    {
+    		  particle->setRemainingProperLifeTime(-log(random.flatShoot())*averageLifeTime);
+    	    }
+    	}
 
-	// set charge
-	if(!particle->chargeIsSet())
-	{
-	    particle->setCharge(particleData->charge());
-	}
+    	// set charge
+    	if(!particle->chargeIsSet())
+    	{
+    	    particle->setCharge(particleData->charge());
+    	}
     }
 
     // add corresponding simTrack to simTrack collection
@@ -174,46 +172,46 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     
     for ( ; genParticleIterator_ != genParticleEnd_ ; ++genParticleIterator_,++genParticleIndex_ ) // loop over gen particles
     {
-	// some handy pointers and references
-	const HepMC::GenParticle & particle = **genParticleIterator_;
-	const HepMC::GenVertex & productionVertex = *particle.production_vertex();
-	const HepMC::GenVertex * endVertex = particle.end_vertex();
-	
-	// particle must be produced within the beampipe
-	if(productionVertex.position().perp2()*lengthUnitConversionFactor2_ > beamPipeRadius2_)
-	{
-	    continue;
-	}
-	
-	// particle must not decay before it reaches the beam pipe
-	if(endVertex && endVertex->position().perp2()*lengthUnitConversionFactor2_ < beamPipeRadius2_)
-	{
-	    continue;
-	}
-	
-	// make the particle
-	std::unique_ptr<Particle> newParticle(
-	    new Particle(particle.pdg_id(),
-			 math::XYZTLorentzVector(productionVertex.position().x()*lengthUnitConversionFactor_,
-						 productionVertex.position().y()*lengthUnitConversionFactor_,
-						 productionVertex.position().z()*lengthUnitConversionFactor_,
-						 productionVertex.position().t()*timeUnitConversionFactor_),
-			 math::XYZTLorentzVector(particle.momentum().x()*momentumUnitConversionFactor_,
-						 particle.momentum().y()*momentumUnitConversionFactor_,
-						 particle.momentum().z()*momentumUnitConversionFactor_,
-						 particle.momentum().e()*momentumUnitConversionFactor_)));
-	newParticle->setGenParticleIndex(genParticleIndex_);
+    	// some handy pointers and references
+    	const HepMC::GenParticle & particle = **genParticleIterator_;
+    	const HepMC::GenVertex & productionVertex = *particle.production_vertex();
+    	const HepMC::GenVertex * endVertex = particle.end_vertex();
 
-	// try to get the life time of the particle from the genEvent
-	if(endVertex)
-	{
-	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
-	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
-	}
+    	// particle must be produced within the beampipe
+    	if(productionVertex.position().perp2()*lengthUnitConversionFactor2_ > beamPipeRadius2_)
+    	{
+    	    continue;
+    	}
+    	
+    	// particle must not decay before it reaches the beam pipe
+    	if(endVertex && endVertex->position().perp2()*lengthUnitConversionFactor2_ < beamPipeRadius2_)
+    	{
+    	    continue;
+    	}
+    	
+    	// make the particle
+    	std::unique_ptr<Particle> newParticle(
+    	    new Particle(particle.pdg_id(),
+    			 math::XYZTLorentzVector(productionVertex.position().x()*lengthUnitConversionFactor_,
+    						 productionVertex.position().y()*lengthUnitConversionFactor_,
+    						 productionVertex.position().z()*lengthUnitConversionFactor_,
+    						 productionVertex.position().t()*timeUnitConversionFactor_),
+    			 math::XYZTLorentzVector(particle.momentum().x()*momentumUnitConversionFactor_,
+    						 particle.momentum().y()*momentumUnitConversionFactor_,
+    						 particle.momentum().z()*momentumUnitConversionFactor_,
+    						 particle.momentum().e()*momentumUnitConversionFactor_)));
+    	newParticle->setGenParticleIndex(genParticleIndex_);
 
-	// and return
-	return std::move(newParticle);
+    	// try to get the life time of the particle from the genEvent
+    	if(endVertex)
+    	{
+    	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
+    	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
+    	}
+
+    	// and return
+    	return std::move(newParticle);
     }
-    
+
     return std::unique_ptr<Particle>();
 }

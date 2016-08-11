@@ -63,7 +63,7 @@ const std::string FastSimProducer::MESSAGECATEGORY = "FastSimulation";
 FastSimProducer::FastSimProducer(const edm::ParameterSet& iConfig)
     : genParticlesToken_(consumes<edm::HepMCProduct>(iConfig.getParameter<edm::InputTag>("src"))) 
     , geometry_(iConfig.getParameter<edm::ParameterSet>("detectorDefinition"))
-    , beamPipeRadius_(iConfig.getUntrackedParameter<double>("beamPipeRadius",3.0))
+    , beamPipeRadius_(iConfig.getParameter<double>("beamPipeRadius"))
     , particleFilter_(iConfig.getParameter<edm::ParameterSet>("particleFilter"))
 {
 
@@ -73,11 +73,11 @@ FastSimProducer::FastSimProducer(const edm::ParameterSet& iConfig)
     const edm::ParameterSet & modelCfgs = iConfig.getParameter<edm::ParameterSet>("interactionModels");
     for( const std::string & modelName : modelCfgs.getParameterNames())
     {
-	const edm::ParameterSet & modelCfg = modelCfgs.getParameter<edm::ParameterSet>(modelName);
-	std::string modelClassName(modelCfg.getParameter<std::string>("className"));
-	std::unique_ptr<fastsim::InteractionModel> interactionModel(fastsim::InteractionModelFactory::get()->create(modelClassName,modelName,modelCfg));
-	interactionModels_.push_back(std::move(interactionModel));
-	interactionModelMap_[modelName] = interactionModel.get();
+		const edm::ParameterSet & modelCfg = modelCfgs.getParameter<edm::ParameterSet>(modelName);
+		std::string modelClassName(modelCfg.getParameter<std::string>("className"));
+		std::unique_ptr<fastsim::InteractionModel> interactionModel(fastsim::InteractionModelFactory::get()->create(modelClassName,modelName,modelCfg));
+		interactionModels_.push_back(std::move(interactionModel));
+		interactionModelMap_[modelName] = interactionModels_.back().get();
     }
 
     //----------------
@@ -87,7 +87,7 @@ FastSimProducer::FastSimProducer(const edm::ParameterSet& iConfig)
     produces<edm::SimVertexContainer>();
     for(auto & interactionModel : interactionModels_)
     {
-	interactionModel->registerProducts(*this);
+		interactionModel->registerProducts(*this);
     }
 }
 
@@ -101,9 +101,9 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     // TODO: check me
     if(iovSyncValue_!=iSetup.iovSyncValue())
     {
-	LogDebug(MESSAGECATEGORY) << "   triggering update of event setup" << std::endl;
-	iovSyncValue_=iSetup.iovSyncValue();
-	geometry_.update(iSetup,interactionModelMap_);
+		LogDebug(MESSAGECATEGORY) << "   triggering update of event setup" << std::endl;
+		iovSyncValue_=iSetup.iovSyncValue();
+		geometry_.update(iSetup,interactionModelMap_);
     }
 
     std::unique_ptr<edm::SimTrackContainer> output_simTracks(new edm::SimTrackContainer);
@@ -134,48 +134,50 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(random); particle != 0;particle=particleLooper.nextParticle(random)) 
     {
-	// move the particle through the layers
-	fastsim::LayerNavigator layerNavigator(geometry_);
-	const fastsim::Layer * layer = 0;
-	while(layerNavigator.moveParticleToNextLayer(*particle,layer))
-	{
+    	LogDebug(MESSAGECATEGORY) << "\n   moving particle:" << *particle;
 
-	    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer
-				      << "\n   new state:" << particle;
-	    
-	    // perform interaction between layer and particle
-	    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
-	    {
-		LogDebug(MESSAGECATEGORY) << "   interact with" << interactionModel;
-		std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
-		interactionModel->interact(*particle,*layer,secondaries,random);
-		particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
-	    }
+		// move the particle through the layers
+		fastsim::LayerNavigator layerNavigator(geometry_);
+		const fastsim::Layer * layer = 0;
+		while(layerNavigator.moveParticleToNextLayer(*particle,layer))
+		{
 
-	    // kinematic cuts
-	    // temporary: break after 100 ns
-	    if(particle->position().T() > 100)
-	    {
-		break;
-	    }
-	    
-	    LogDebug(MESSAGECATEGORY) << "--------------------------------"
-				      << "\n-------------------------------";
+		    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer
+					      << "\n   new state:" << *particle;
+		    
+		    // perform interaction between layer and particle
+		    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
+		    {
+				LogDebug(MESSAGECATEGORY) << "   interact with " << *interactionModel;
+				std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
+				interactionModel->interact(*particle,*layer,secondaries,random);
+				particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
+		    }
 
-	}
+		    // kinematic cuts
+		    // temporary: break after 100 ns
+		    if(particle->position().T() > 100)
+		    {
+				break;
+		    }
+		    
+		    LogDebug(MESSAGECATEGORY) << "--------------------------------"
+					      << "\n-------------------------------";
 
-	// do decays
-	if(particle->remainingProperLifeTime() == 0.)
-	{
-	    LogDebug(MESSAGECATEGORY) << "Decaying particle...";
-	    std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
-	    decayer_.decay(*particle,secondaries,random.theEngine());
-	    LogDebug(MESSAGECATEGORY) << "   decay has " << secondaries.size() << " products";
-	    particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
-	}
-	
-	LogDebug(MESSAGECATEGORY) << "################################"
-				  << "\n###############################";
+		}
+
+		// do decays
+		if(particle->remainingProperLifeTime() < 1E-20)
+		{
+		    LogDebug(MESSAGECATEGORY) << "Decaying particle...";
+		    std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
+		    decayer_.decay(*particle,secondaries,random.theEngine());
+		    LogDebug(MESSAGECATEGORY) << "   decay has " << secondaries.size() << " products";
+		    particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
+		}
+		
+		LogDebug(MESSAGECATEGORY) << "################################"
+					  << "\n###############################";
     }
 
     // store simHits and simTracks
@@ -184,7 +186,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     // store products of interaction models, i.e. simHits
     for(auto & interactionModel : interactionModels_)
     {
-	interactionModel->storeProducts(iEvent);
+		interactionModel->storeProducts(iEvent);
     }
 }
 
