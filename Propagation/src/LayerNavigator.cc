@@ -104,8 +104,8 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 		{
 		    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
 		    {
-			nextBarrelLayer_ = layer.get();
-			break;
+				nextBarrelLayer_ = layer.get();
+				break;
 		    }
 		}
 
@@ -117,8 +117,8 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 		{
 		    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
 		    {
-			nextForwardLayer_ = layer.get();
-			break;
+				nextForwardLayer_ = layer.get();
+				break;
 		    }
 		}
     }

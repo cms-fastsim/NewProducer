@@ -44,7 +44,7 @@ void fastsim::SimpleLayerHitProducer::interact(Particle & particle,
 {
     if(layer.isOnSurface(particle.position()))
     {
-	layerHits_->push_back(math::XYZTLorentzVector(particle.position().X(),particle.position().Y(),particle.position().Z(),particle.position().T()));
+	   layerHits_->push_back(math::XYZTLorentzVector(particle.position().X(),particle.position().Y(),particle.position().Z(),particle.position().T()));
     }
 }
 
@@ -52,6 +52,8 @@ void fastsim::SimpleLayerHitProducer::storeProducts(edm::Event & iEvent)
 {
     LogDebug("FastSimulation") << "      storing products" << std::endl;
     iEvent.put(std::move(layerHits_));
+    //Simon: quick fix. Can be done better?
+    layerHits_.reset(new std::vector<math::XYZTLorentzVector>());
 }
 
 DEFINE_EDM_PLUGIN(

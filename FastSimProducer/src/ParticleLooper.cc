@@ -70,6 +70,8 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     else
     {
 	   particle = nextGenParticle();
+       //Simon: Check if it was the last GenParticle
+       if(!particle) return 0;
     }
 
     // if filter does not accept, skip particle
@@ -89,7 +91,7 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     	// set lifetime
     	if(!particle->remainingProperLifeTimeIsSet())
     	{
-    	    double averageLifeTime = particleData->lifetime().value()/fastsim::Constants::speedOfLight; //!!! units: particleData returns units in c*t
+    	    double averageLifeTime = particleData->lifetime().value()/fastsim::Constants::speedOfLight; //!!! units: particleData returns units in c*t?
     	    if(averageLifeTime > 1e25 || averageLifeTime < 1e-25) // ridiculously safe // particleData seems to return 0 in case particle is stable!
     	    {
     		  particle->setStable();
@@ -188,7 +190,6 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	{
     	    continue;
     	}
-    	
     	// make the particle
     	std::unique_ptr<Particle> newParticle(
     	    new Particle(particle.pdg_id(),
@@ -209,6 +210,8 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
     	}
 
+        //Simon: iterator not increased in case of return!
+        ++genParticleIterator_; ++genParticleIndex_;
     	// and return
     	return std::move(newParticle);
     }

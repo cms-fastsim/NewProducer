@@ -134,7 +134,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(random); particle != 0;particle=particleLooper.nextParticle(random)) 
     {
-    	LogDebug(MESSAGECATEGORY) << "\n   moving particle:" << *particle;
+    	LogDebug(MESSAGECATEGORY) << "\n   moving particle: " << *particle;
 
 		// move the particle through the layers
 		fastsim::LayerNavigator layerNavigator(geometry_);
@@ -142,8 +142,8 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		while(layerNavigator.moveParticleToNextLayer(*particle,layer))
 		{
 
-		    LogDebug(MESSAGECATEGORY) << "   moved to next layer:" << *layer
-					      << "\n   new state:" << *particle;
+		    LogDebug(MESSAGECATEGORY) << "   moved to next layer: " << *layer
+					      << "\n   new state: " << *particle;
 		    
 		    // perform interaction between layer and particle
 		    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())
@@ -167,7 +167,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		}
 
 		// do decays
-		if(particle->remainingProperLifeTime() < 1E-20)
+		if(!particle->isStable() && particle->remainingProperLifeTime() < 1E-20)
 		{
 		    LogDebug(MESSAGECATEGORY) << "Decaying particle...";
 		    std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
