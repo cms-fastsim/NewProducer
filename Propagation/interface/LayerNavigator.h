@@ -18,8 +18,10 @@ namespace fastsim
 	bool moveParticleToNextLayer(Particle & particle,const Layer * & layer);
     private:
 	const Geometry * const geometry_;
-	const BarrelLayer * nextBarrelLayer_;
-	const ForwardLayer * nextForwardLayer_;
+    const BarrelLayer * nextBarrelLayer_;
+	const BarrelLayer * previousBarrelLayer_;
+    const ForwardLayer * nextForwardLayer_;
+	const ForwardLayer * previousForwardLayer_;
 	static const std::string MESSAGECATEGORY;
     };
 }

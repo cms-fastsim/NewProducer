@@ -134,7 +134,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     for(std::unique_ptr<fastsim::Particle> particle = particleLooper.nextParticle(random); particle != 0;particle=particleLooper.nextParticle(random)) 
     {
-    	LogDebug(MESSAGECATEGORY) << "\n   moving particle: " << *particle;
+    	LogDebug(MESSAGECATEGORY) << "\n   moving NEXT particle: " << *particle;
 
 		// move the particle through the layers
 		fastsim::LayerNavigator layerNavigator(geometry_);

@@ -61,7 +61,9 @@ const std::string fastsim::LayerNavigator::MESSAGECATEGORY = "FastSimulation";
 fastsim::LayerNavigator::LayerNavigator(const fastsim::Geometry & geometry)
     : geometry_(&geometry)
     , nextBarrelLayer_(0)
+    , previousBarrelLayer_(0)
     , nextForwardLayer_(0)
+    , previousForwardLayer_(0)
 {;}
 
 bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & particle,const fastsim::Layer * & layer)
@@ -97,29 +99,51 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 
 		//
 		// find the narrowest barrel layers with
-		// layer.r > particle.r
+		// layer.r > particle.r (the closest layer with layer.r < particle.r will then be considered, too)
 		// assume barrel layers are ordered with increasing r
 		//
 		for(const auto & layer : geometry_->barrelLayers())
 		{
-		    if(particle.position().Pt() < layer->getRadius() || (particleMovesInwards && particle.position().Pt() == layer->getRadius()))
+			if(layer->isOnSurface(particle.position())){
+				if(particleMovesInwards){
+					nextBarrelLayer_ = layer.get();
+					break;
+				}else{
+					continue;
+				}
+			}
+
+		    if(particle.position().Pt() < layer->getRadius())
 		    {
 				nextBarrelLayer_ = layer.get();
 				break;
 		    }
+
+			previousBarrelLayer_ = layer.get();
 		}
 
 		// 
 		//  find the forward layer with smallest z with
-		//  layer.z > particle z
+		//  layer.z > particle z (the closest layer with layer.z < particle.z will then be considered, too)
 		//
 		for(const auto & layer : geometry_->forwardLayers())
 		{
-		    if(particle.position().Z() < layer->getZ() || (particle.momentum().Z() < 0 && particle.position().Z() == layer->getZ()))
+			if(layer->isOnSurface(particle.position())){
+				if(particle.momentum().Z() < 0){
+					nextForwardLayer_ = layer.get();
+					break;
+				}else{
+					continue;
+				}
+			}
+
+		    if(particle.position().Z() < layer->getZ())
 		    {
 				nextForwardLayer_ = layer.get();
 				break;
 		    }
+
+			previousForwardLayer_ = layer.get();
 		}
     }
     //
@@ -128,32 +152,38 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     else
     {
 		LogDebug(MESSAGECATEGORY) << "      ordinary call";
+		// barrel layer was hit
 		if(layer == nextBarrelLayer_)
 		{
 		    if(!particleMovesInwards)
 		    {
+		    	previousBarrelLayer_ = nextBarrelLayer_;
 				nextBarrelLayer_ = geometry_->nextLayer(nextBarrelLayer_);
 		    }
 		}
-		else if(layer == geometry_->previousLayer(nextBarrelLayer_))
+		else if(layer == previousBarrelLayer_)
 		{
 		    if(particleMovesInwards)
 		    {
-				nextBarrelLayer_ = geometry_->previousLayer(nextBarrelLayer_);
+				nextBarrelLayer_ = previousBarrelLayer_;
+				previousBarrelLayer_ = geometry_->previousLayer(previousBarrelLayer_);
 		    }
 		}
+		// forward layer was hit
 		else if(layer == nextForwardLayer_)
 		{
 		    if(particle.momentum().Z() > 0)
 		    {
+				previousForwardLayer_ = nextForwardLayer_;
 				nextForwardLayer_ = geometry_->nextLayer(nextForwardLayer_);
 		    }
 		}
-		else if(layer == geometry_->previousLayer(nextForwardLayer_))
+		else if(layer == previousForwardLayer_)
 		{
 		    if(particle.momentum().Z() < 0)
 		    {
-				nextForwardLayer_ = geometry_->previousLayer(nextForwardLayer_);
+				nextForwardLayer_ = previousForwardLayer_;
+				previousForwardLayer_ = geometry_->previousLayer(previousForwardLayer_);
 		    }
 		}
 		layer = 0;
@@ -166,10 +196,10 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     // TODO: for straight tracks you KNOW in advance wether next or previous barrel layer will be hit: use that information!
 
     
-    LogDebug(MESSAGECATEGORY) << "   nextBarrelLayer index: " << (nextBarrelLayer_ ? nextBarrelLayer_->index() : -1)
-			      << "\n   nextForwardLayer index: " << (nextForwardLayer_ ? nextForwardLayer_->index() : -1);
+    LogDebug(MESSAGECATEGORY) << "   particle between BarrelLayers: " << (previousBarrelLayer_ ? previousBarrelLayer_->index() : -1) << "/" << (nextBarrelLayer_ ? nextBarrelLayer_->index() : -1) << " (total: "<< geometry_->barrelLayers().size() <<")"
+			      << "\n   particle between ForwardLayers: " << (previousForwardLayer_ ? previousForwardLayer_->index() : -1) << "/" << (nextForwardLayer_ ? nextForwardLayer_->index() : -1) << " (total: "<< geometry_->forwardLayers().size() <<")";
     
-    // caclulate and store some variables related to the particle's trajectory
+    // calculate and store some variables related to the particle's trajectory
     std::unique_ptr<fastsim::Trajectory> trajectory = Trajectory::createTrajectory(particle,magneticFieldZ);
     
     // now let's try to move the particle to one of the enclosing layers
@@ -178,9 +208,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     {
 		layers.push_back(nextBarrelLayer_);
     }
-    if(geometry_->previousLayer(nextBarrelLayer_))
+    if(previousBarrelLayer_)
     {
-		layers.push_back(geometry_->previousLayer(nextBarrelLayer_));
+		layers.push_back(previousBarrelLayer_);
     }
     if(particle.momentum().Z() > 0)
     {
@@ -191,9 +221,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     }
     else
     {
-		if(geometry_->previousLayer(nextForwardLayer_))
+		if(previousForwardLayer_)
 		{
-		    layers.push_back(geometry_->previousLayer(nextForwardLayer_));
+		    layers.push_back(previousForwardLayer_);
 		}
     }
     
@@ -213,13 +243,12 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 
     double properDeltaTime = deltaTime / particle.gamma();
 
-    // TODO: this is not very ellegant, particle->remainingProperLifeTime() should not return negative value in case it is stable...
     if(!particle.isStable() && properDeltaTime > particle.remainingProperLifeTime())
     {
 		deltaTime = particle.remainingProperLifeTime() * particle.gamma();
 		particle.setRemainingProperLifeTime(0.);
     }
-    
+
     // move particle in space, time and momentum
     if(layer)
     {
