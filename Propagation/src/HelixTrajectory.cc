@@ -19,8 +19,9 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // - the magnitude of the bField and the magnitude of the charge determine the radius of the helix. Again, this does not influence phi0
     , centerX_(position_.X() + radius_*std::cos(phi0_))
     , centerY_(position_.Y() - radius_*std::sin(phi0_))
-    , centerR_(centerX_*centerX_ + centerY_*centerY_)
+    //, centerR_(centerX_*centerX_ + centerY_*centerY_)
     // SIMON: should you use the sqrt here? centerR_=sqrt(centerX_*centerX_ + centerY_*centerY_)
+    , centerR_(sqrt(centerX_*centerX_ + centerY_*centerY_))
     , minR_(centerR_ - radius_)
     , maxR_(centerR_ + radius_)
     , phiSpeed_( momentum_.Rho() / momentum_.E() * speedOfLight_ / radius_ * (particle.charge() > 0 ? 1. : -1) * (magneticFieldZ > 0 ? 1. : -1 ) ) // make sure you have the right signs here!

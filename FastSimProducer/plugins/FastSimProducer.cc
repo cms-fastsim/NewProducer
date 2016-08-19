@@ -141,7 +141,6 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		const fastsim::Layer * layer = 0;
 		while(layerNavigator.moveParticleToNextLayer(*particle,layer))
 		{
-
 		    LogDebug(MESSAGECATEGORY) << "   moved to next layer: " << *layer
 					      << "\n   new state: " << *particle;
 		    
