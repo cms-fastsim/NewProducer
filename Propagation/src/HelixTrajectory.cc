@@ -3,7 +3,7 @@
 #include "FastSimulation/Layer/interface/ForwardLayer.h"
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
-#include <math.h>
+#include <cmath>
 
 // helix phi definition
 // ranges from -PI to PI
@@ -12,20 +12,22 @@
 
 fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,double magneticFieldZ)
     : Trajectory(particle)
-    , radius_( abs(momentum_.Pt() / ( speedOfLight_ * 1e-4 * magneticFieldZ * particle.charge() )))
-    , phi0_(std::atan2(momentum_.Px(),momentum_.Py()) - (momentum_.Px() > 0 || momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ))  // something wrong here, should depend on direction of magnetic field and charge!
-    // SIMON: no, this formula is correct! The magnetic force is always perpendicular to the momentum!
-    // - the sign of the bField and the sign of charge determine the direction of the rotation. However, phi0 stays the same
-    // - the magnitude of the bField and the magnitude of the charge determine the radius of the helix. Again, this does not influence phi0
-    , centerX_(position_.X() + radius_*std::cos(phi0_))
-    , centerY_(position_.Y() - radius_*std::sin(phi0_))
-    //, centerR_(centerX_*centerX_ + centerY_*centerY_)
-    // SIMON: should you use the sqrt here? centerR_=sqrt(centerX_*centerX_ + centerY_*centerY_)
+    // exact: r = gamma*beta*m_0*c / (q*e*B) = p_T / (q * e * B)
+    // momentum in units of GeV/c: r = p_T * c * 10^9 / (q * B)
+    // c has units of [cm/ns]. how to deal with that??
+    // is this correct??? I have problems with the units...
+    , radius_(std::abs(momentum_.Pt() * 1e9 * speedOfLight_ / (particle.charge() * magneticFieldZ)))
+    , phi_(std::atan2(momentum_.Px(),momentum_.Py()) + (momentum_.Py() > 0 ? M_PI/2 : -M_PI/2 ))
+    , centerX_(position_.X() + radius_*std::cos(phi_))
+    , centerY_(position_.Y() - radius_*std::sin(phi_))
     , centerR_(sqrt(centerX_*centerX_ + centerY_*centerY_))
     , minR_(centerR_ - radius_)
     , maxR_(centerR_ + radius_)
-    , phiSpeed_( momentum_.Rho() / momentum_.E() * speedOfLight_ / radius_ * (particle.charge() > 0 ? 1. : -1) * (magneticFieldZ > 0 ? 1. : -1 ) ) // make sure you have the right signs here!
-{}
+    // omega = q * B / (gamma * m) = q * B / (E / c^2) = q * B * c^2 / E
+    // omega: negative for negative q -> seems to be what we want.
+    // Again: trouble with units...
+    , phiSpeed_(particle.charge() * magneticFieldZ * speedOfLight_ * speedOfLight_ / position_.E())
+{std::cout<<radius_<<std::endl;}
 
 bool fastsim::HelixTrajectory::crosses(const BarrelLayer & layer) const
 {
@@ -75,9 +77,9 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     // we need to make sure the 2nd solution is picked.
     if(layer.isOnSurface(position_))
     {
-	edm::LogError("FastSimulation" )
-	    << "WARNING: I'm not ready for this!!!" << std::endl
-	    << "         Need to return the next crossing, not the current one" << std::endl;
+    	edm::LogError("FastSimulation" )
+    	    << "WARNING: I'm not ready for this!!!" << std::endl
+    	    << "         Need to return the next crossing, not the current one" << std::endl;
     }
 
     double E = centerX_*centerX_ + centerY_*centerY_ + radius_*radius_ - layer.getRadius()*layer.getRadius();
@@ -98,7 +100,6 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     double phi1 = std::asin((-b - sqrtDelta)/ 2. / a);
     double phi2 = std::asin((-b + sqrtDelta)/ 2. / a);
     // asin is ambiguous, make sure to have the right solution
-    // SIMON: asin always returns the sin in the interval [-pi/2, +pi/2]. That should be the one that we want?
     // TODO: make sure this condition is correct
     if( (centerR_ > layer.getRadius() && centerX_ > 0.) || 
 	(centerR_ < layer.getRadius() && centerX_ < 0.) )
@@ -109,12 +110,12 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
 
     // find the corresponding times
     // make sure they are positive
-    double t1 = (phi1 - phi0_)/phiSpeed_;
+    double t1 = (phi1 - phi_)/phiSpeed_;
     if(t1 < 0)
     {
 	t1 += 2*M_PI/phiSpeed_;
     }
-    double t2 = (phi1 - phi0_)/phiSpeed_;
+    double t2 = (phi2 - phi_)/phiSpeed_;
     if(t2 < 0)
     {
 	t2 += 2*M_PI/phiSpeed_;
@@ -128,21 +129,16 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
 void fastsim::HelixTrajectory::move(double deltaTimeC)
 {
     double deltaT = deltaTimeC/speedOfLight_;
-    double positionPhi = phi0_ + phiSpeed_*deltaT;
+    double positionPhi = phi_ + phiSpeed_*deltaT;
     position_.SetXYZT(
-	position_.X() + radius_*std::cos(positionPhi),
-	position_.Y() + radius_*std::cos(positionPhi),
-	position_.Z() + momentum_.Z()/momentum_.E()*deltaTimeC,
-	position_.T() + deltaT);
-    double momentumPhi = positionPhi  - (momentum_.X() > 0 || momentum_.Y() > 0 ? M_PI/2 : -M_PI/2 ); // something wrong here, should depend on direction of magnetic field and charge!
-    // SIMON: sorry, I don't understand what you are calculating here.. 
+	   centerX_ - radius_*std::cos(positionPhi),
+	   centerY_ + radius_*std::sin(positionPhi),
+	   position_.Z() + momentum_.Z()/momentum_.E()*deltaTimeC,
+	   position_.T() + deltaT);
+    double momentumPhi = positionPhi  - (momentum_.Y() > 0 ? M_PI/2 : -M_PI/2 );
     momentum_.SetXYZT(
-	momentum_.Rho()*std::cos(momentumPhi),
-	momentum_.Rho()*std::sin(momentumPhi),
-    // SIMON: I'm not sure if this is correct. Using the radial speed along the trajectory (pr^2=px^2+py^2) it would be
-    // px = pr*cosPhi
-    // py = pr*sinPhi
-    // pr should be what you call phiSpeed_? I'm not 100% sure
-	momentum_.Z(),
-	momentum_.E());
+	   momentum_.Rho()*std::cos(momentumPhi),
+	   momentum_.Rho()*std::sin(momentumPhi),
+	   momentum_.Z(),
+	   momentum_.E());
 }

@@ -42,7 +42,7 @@ namespace fastsim
 	bool isStable() const {return remainingProperLifeTime_ == -1.;}
 
 	// other
-    bool chargeIsSet() const {return charge_!=999.;}
+    bool chargeIsSet() const {return charge_!=-999.;}
 	bool remainingProperLifeTimeIsSet() const {return remainingProperLifeTime_ != -999.;}
 	double gamma() const { return momentum().M() / momentum().E(); };
 
