@@ -46,7 +46,7 @@ double fastsim::Trajectory::nextCrossingTimeC(const fastsim::ForwardLayer & laye
 {
     if(layer.isOnSurface(position_))
     {
-	return -1;
+	   return -1;
     }
 
     // t = (z - z_0) / v_z

@@ -8,7 +8,7 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
 {
     if(layer.isOnSurface(position_))
     {
-	return -1;
+	   return -1;
     }
 
     //
@@ -29,7 +29,7 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
     // substitute: v_y = p_y / E * c  ( note: extra * c absorbed in p_y units)
     // => t*c = (-b +/- sqrt(b^2 - ac) ) / a * E
     // with a = p_x^2 + p_y^2
-    // with b = p_x + p_y^2     // SIMON: I don't think this is what you ment to write
+    // with b = p_x*x_0 + p_y*y_0
     // with c = x_0^2 + y_0^2 - R^2
     double a = momentum_.Perp2();
     double b = (position_.X()*momentum_.X() + position_.Y()*momentum_.Y() );
@@ -38,7 +38,7 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
     double delta = b*b - a*c;
     if(delta < 0)
     {
-	return -1;
+	   return -1;
     }
     double sqrtDelta = sqrt(delta);
 
@@ -49,12 +49,13 @@ double fastsim::StraightTrajectory::nextCrossingTimeC(const fastsim::BarrelLayer
     //
     if(-b > sqrtDelta)
     {
-	return (-b - sqrtDelta)/a*momentum_.E();
+	   return (-b - sqrtDelta)/a*momentum_.E();
     }
     else if(b < sqrtDelta)
     {
-	return (-b + sqrtDelta)/a*momentum_.E();
+	   return (-b + sqrtDelta)/a*momentum_.E();
     }
+
     return -1.;
 }
 
