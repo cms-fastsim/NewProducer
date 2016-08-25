@@ -16,7 +16,7 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // momentum in units of GeV/c: r = p_T * 10^9 / (c * q * B)
     // in cmssw units: r = p_T / (c * 10^-4 * q * B)
     , radius_(std::abs(momentum_.Pt() / (speedOfLight_ * 1e-4 * particle.charge() * magneticFieldZ)))
-    , phi_(std::atan(momentum_.Py()/momentum_.Px()) + (momentum_.Px() > 0 ? M_PI/2. : 3.*M_PI/2. ))
+    , phi_(std::atan(momentum_.Py()/momentum_.Px()) + (momentum_.Px()*particle.charge() < 0 ? M_PI/2. : 3.*M_PI/2. ))
     , centerX_(position_.X() - radius_*std::cos(phi_))
     , centerY_(position_.Y() - radius_*std::sin(phi_))
     , centerR_(std::sqrt(centerX_*centerX_ + centerY_*centerY_))
@@ -25,11 +25,12 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // omega = q * e * B / (gamma * m) = q * e *B / (E / c^2) = q * e * B * c^2 / E
     // omega: negative for negative q -> seems to be what we want.
     // energy in units of GeV: omega = q * B * c^2 / (E * 10^9)
-    // in cmssw units: omega[1/s] = q * B * c^2 * 10^-9 / E
     // in cmssw units: omega[1/ns] = q * B * c^2 * 10^-4 / E
-    // TODO: check sign?!
-    , phiSpeed_(particle.charge() * magneticFieldZ * speedOfLight_ * speedOfLight_ * 1e-4 / momentum_.E() * (momentum_.Pz() > 0 ? -1. : 1))
-{;}
+    , phiSpeed_(particle.charge() * magneticFieldZ * speedOfLight_ * speedOfLight_ * 1e-4 / momentum_.E())
+{std::cout<<centerX_<<std::endl;
+std::cout<<centerY_<<std::endl;
+std::cout<<phi_/M_PI<<std::endl;
+std::cout<<phiSpeed_*1e3<<std::endl;}
 
 bool fastsim::HelixTrajectory::crosses(const BarrelLayer & layer) const
 {
@@ -94,16 +95,11 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     // asin is ambiguous, make sure to have the right solution
     if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
         phi1 = - phi1 + M_PI;
+        std::cout<<"-> fixing phi1"<<std::endl;
     }
     if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2)))) > 1e-3){
         phi2 = - phi2 + M_PI;
-    }
-
-    if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
-        throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "not able to calculate phi1 of intersection";
-    }
-    if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2)))) > 1e-3){
-        throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "not able to calculate phi2 of intersection";
+        std::cout<<"-> fixing phi2"<<std::endl;
     }
 
     if(phi1 < 0){
@@ -112,6 +108,13 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     if(phi2 < 0){
         phi2 += 2. * M_PI;
     }
+
+    if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
+        throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "not able to calculate phi1 of intersection";
+    }
+    if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2)))) > 1e-3){
+        throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "not able to calculate phi2 of intersection";
+    }    
 
     // find the corresponding times
     // make sure they are positive
@@ -128,10 +131,10 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
 
     // if the particle is already on the layer,
     // we need to make sure the 2nd solution is picked.
-    if(std::abs(phi1 - phi_) < 1e-17){
+    if(std::abs(phi1 - phi_) < 1e-7){
         return t2*speedOfLight_;
     }
-    if(std::abs(phi2 - phi_) < 1e-17){
+    if(std::abs(phi2 - phi_) < 1e-7){
         return t1*speedOfLight_;
     }
 
@@ -158,5 +161,18 @@ void fastsim::HelixTrajectory::move(double deltaTimeC)
 	   momentum_.Z(),
 	   momentum_.E());
 
+    /*if(deltaTimeC < 1000 && (position_.X() > 1 || position_.Y() > 1)){
+        if((position_.X() > 0 && momentum_.X() < 0) || (position_.X() < 0 && momentum_.X() > 0)){
+            std::cout<<"WARNING"<<std::endl;
+            std::cout<<"x=("<<position_.X()<<"; "<<position_.Y()<<") p=("<<momentum_.X()<<"; "<<momentum_.Y()<<")"<<std::endl;
+            throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "strange";
+        }
+        if((position_.Y() > 0 && momentum_.Y() < 0) || (position_.Y() < 0 && momentum_.Y() > 0)){
+            std::cout<<"WARNING"<<std::endl;
+            std::cout<<"x=("<<position_.X()<<"; "<<position_.Y()<<") p=("<<momentum_.X()<<"; "<<momentum_.Y()<<")"<<std::endl;
+            throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "strange";
 
+        }
+    }
+    */
 }
