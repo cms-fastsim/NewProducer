@@ -73,15 +73,16 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     // extract DetLayer (i.e. full geometry of tracker modules)
     // -------------------------------
 
-    std::string detLayerName = cfg.getUntrackedParameter<std::string>("detLayer","");
+    std::string detLayerName = cfg.getUntrackedParameter<std::string>("activeLayer","");
     const DetLayer * detLayer = 0;
+
     if(!detLayerName.empty() && geometricSearchTracker_)
     {
-	if(isForward)
-	{
-	    detLayerName = (isOnPositiveSide ? "pos" : "neg") + detLayerName;
-	}
-	detLayer = getDetLayer(detLayerName,*geometricSearchTracker_);
+    	if(isForward)
+    	{
+    	    detLayerName = (isOnPositiveSide ? "pos" : "neg") + detLayerName;
+    	}
+	    detLayer = getDetLayer(detLayerName,*geometricSearchTracker_);
     }
 
     // ------------------------------
@@ -104,11 +105,11 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     {
     	if(isForward)
     	{
-    	    position = static_cast<ForwardDetLayer const*>(detLayer)->specificSurface().position().z();
+    	    position = static_cast<ForwardDetLayer const*>(detLayer)->surface().position().z();
     	}
     	else
     	{
-                position = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
+            position = static_cast<BarrelDetLayer const*>(detLayer)->specificSurface().radius();
     	}
     }
     // then throw error
@@ -118,7 +119,7 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     	cfg.allToString(cfgString);
     	throw cms::Exception("fastsim::LayerFactory") << "Cannot extract a " 
     						      << (isForward ? "position" : "radius") << " for this " 
-    						      << (isForward ? "forward" : "barrel") << " layer :\n"
+    						      << (isForward ? "forward" : "barrel") << " layer:\n"
     						      << cfgString;
         }
     
@@ -242,14 +243,14 @@ fastsim::LayerFactory::getDetLayer(const std::string & detLayerName, const Geome
 	if(barrelDetLayersMap_.find(detLayerListName) != barrelDetLayersMap_.end())
 	{
 	    auto detLayerList = barrelDetLayersMap_.find(detLayerListName)->second;
-	    return detLayerList->at(index); // use at, to provoce the trowing of an error in case of a bad index
+	    return detLayerList->at(index-1); // use at, to provoce the trowing of an error in case of a bad index
 	}
 	
 	// try to find the detLayer in the forward map
 	else if(forwardDetLayersMap_.find(detLayerListName) != forwardDetLayersMap_.end())
 	{
 	    auto detLayerList = forwardDetLayersMap_.find(detLayerListName)->second;
-	    return detLayerList->at(index); // use at, to provoce the trowing of an error in case of a bad index
+	    return detLayerList->at(index-1); // use at, to provoce the trowing of an error in case of a bad index
 	}
 	// throw an error
 	else

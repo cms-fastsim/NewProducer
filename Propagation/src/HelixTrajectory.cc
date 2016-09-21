@@ -27,10 +27,7 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // energy in units of GeV: omega = q * B * c^2 / (E * 10^9)
     // in cmssw units: omega[1/ns] = q * B * c^2 * 10^-4 / E
     , phiSpeed_(particle.charge() * magneticFieldZ * speedOfLight_ * speedOfLight_ * 1e-4 / momentum_.E())
-{std::cout<<centerX_<<std::endl;
-std::cout<<centerY_<<std::endl;
-std::cout<<phi_/M_PI<<std::endl;
-std::cout<<phiSpeed_*1e3<<std::endl;}
+{;}
 
 bool fastsim::HelixTrajectory::crosses(const BarrelLayer & layer) const
 {
@@ -95,11 +92,11 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     // asin is ambiguous, make sure to have the right solution
     if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
         phi1 = - phi1 + M_PI;
-        std::cout<<"-> fixing phi1"<<std::endl;
+        //std::cout<<"-> fixing phi1"<<std::endl;
     }
     if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2)))) > 1e-3){
         phi2 = - phi2 + M_PI;
-        std::cout<<"-> fixing phi2"<<std::endl;
+        //std::cout<<"-> fixing phi2"<<std::endl;
     }
 
     if(phi1 < 0){

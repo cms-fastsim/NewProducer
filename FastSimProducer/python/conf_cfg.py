@@ -11,13 +11,13 @@ process.maxEvents = cms.untracked.PSet(
 # load particle data table
 process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
 # load geometry
-#process.load('FastSimulation.Configuration.Geometries_MC_cff')
+process.load('FastSimulation.Configuration.Geometries_MC_cff')
 # load magnetic field
-#process.load('Configuration.StandardSequences.MagneticField_cff')
-# load and set conditions (required by geometry and magnetic field)
-#process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-#from Configuration.AlCa.GlobalTag import GlobalTag
-#process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:run2_mc', '')          
+process.load('Configuration.StandardSequences.MagneticField_cff')
+#load and set conditions (required by geometry and magnetic field)
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+from Configuration.AlCa.GlobalTag import GlobalTag
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:run2_mc', '')          
 
 # read generator event from file
 process.source = cms.Source("PoolSource",

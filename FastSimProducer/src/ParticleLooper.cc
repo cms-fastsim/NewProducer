@@ -210,7 +210,7 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
     	}
 
-        //Simon: iterator not increased in case of return!
+        //Simon: fix! iterator not increased in case of return!
         ++genParticleIterator_; ++genParticleIndex_;
     	// and return
     	return std::move(newParticle);

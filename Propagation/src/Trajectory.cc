@@ -1,3 +1,4 @@
+#include "DataFormats/Math/interface/LorentzVector.h"
 #include "FastSimulation/Propagation/interface/StraightTrajectory.h"
 #include "FastSimulation/Propagation/interface/HelixTrajectory.h"
 #include "FastSimulation/Layer/interface/ForwardLayer.h"
@@ -18,13 +19,17 @@ std::unique_ptr<fastsim::Trajectory> fastsim::Trajectory::createTrajectory(const
 {
     if(particle.charge() == 0. || magneticFieldZ == 0.)
     {
-	LogDebug("FastSim") << "create straight trajectory";
-	return std::unique_ptr<fastsim::Trajectory>(new fastsim::StraightTrajectory(particle));
+	   LogDebug("FastSim") << "create straight trajectory";
+	   return std::unique_ptr<fastsim::Trajectory>(new fastsim::StraightTrajectory(particle));
+    }
+    else if(std::abs(particle.momentum().Pt() / (speedOfLight_ * 1e-4 * particle.charge() * magneticFieldZ)) > 1e5){
+       LogDebug("FastSim") << "create straight trajectory (huge radius)";
+       return std::unique_ptr<fastsim::Trajectory>(new fastsim::StraightTrajectory(particle));
     }
     else
     {
-	LogDebug("FastSim") << "create helix trajectory";
-	return std::unique_ptr<fastsim::Trajectory>(new fastsim::HelixTrajectory(particle,magneticFieldZ));
+	   LogDebug("FastSim") << "create helix trajectory";
+	   return std::unique_ptr<fastsim::Trajectory>(new fastsim::HelixTrajectory(particle,magneticFieldZ));
     }
 }
 

@@ -17,6 +17,7 @@
 #include "FastSimulation/NewParticle/interface/Particle.h"
 #include "FastSimulation/Layer/interface/Layer.h"
 #include "FastSimulation/InteractionModel/interface/InteractionModel.h"
+#include "FastSimulation/InteractionModel/interface/InteractionModelFactory.h"
 
 // data formats
 #include "DataFormats/GeometrySurface/interface/Plane.h"
@@ -41,7 +42,7 @@ typedef std::pair<const GeomDet*,TrajectoryStateOnSurface> DetWithState;
 
 namespace fastsim
 {
-    class TrackerSimHitProducer : InteractionModel
+    class TrackerSimHitProducer : public InteractionModel
     {
     public:
 	TrackerSimHitProducer(const std::string & name,const edm::ParameterSet & cfg);
@@ -71,7 +72,8 @@ void fastsim::TrackerSimHitProducer::registerProducts(edm::ProducerBase & produc
 
 void fastsim::TrackerSimHitProducer::storeProducts(edm::Event & iEvent)
 {
-    iEvent.put(std::move(simHitContainer_));
+    iEvent.put(std::move(simHitContainer_), "TrackerHits");
+    simHitContainer_.reset(new edm::PSimHitContainer);
 }
 
 void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random)
@@ -193,3 +195,9 @@ void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOn
 				   localMomentum.theta(),
 				   localMomentum.phi());
 }
+
+DEFINE_EDM_PLUGIN(
+    fastsim::InteractionModelFactory,
+    fastsim::TrackerSimHitProducer,
+    "fastsim::TrackerSimHitProducer"
+    );

@@ -63,8 +63,8 @@ namespace fastsim
 	double nuclearInteractionThicknessFactor_;
 	std::vector<InteractionModel *> interactionModels_;
 	
-	static constexpr double epsilonDistance_ =  1.0e-3;
-	static constexpr double epsilonDistance2_ = 1.0e-3*1.0e-3;
+	static constexpr double epsilonDistance_ =  1.0e-5;
+	static constexpr double epsilonDistance2_ = 1.0e-5*1.0e-5;
     };
 
     std::ostream& operator << (std::ostream& os , const Layer & layer);
