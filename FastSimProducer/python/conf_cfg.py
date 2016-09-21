@@ -25,21 +25,67 @@ process.source = cms.Source("PoolSource",
 )
 
 # configure random number generator for simhit production
+process.load('Configuration.StandardSequences.Services_cff')
 process.RandomNumberGeneratorService = cms.Service(
     "RandomNumberGeneratorService",
     fastSimProducer = cms.PSet(
         initialSeed = cms.untracked.uint32(234567),
         engineName = cms.untracked.string('TRandom3')
-        )
+        ),
+    siTrackerGaussianSmearingRecHits = cms.PSet(
+         initialSeed = cms.untracked.uint32(24680),
+         engineName = cms.untracked.string('TRandom3')
+     ),
     )
 
-
+# output
+process.load('Configuration.EventContent.EventContent_cff')
+process.load('FastSimulation.Configuration.Reconstruction_BefMix_cff')
 
 # load simhit producer
 process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
 
+# Output definition
+process.FEVTDEBUGHLTEventContent.outputCommands = cms.untracked.vstring(
+        'keep *',
+    )
+
+process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
+    dataset = cms.untracked.PSet(
+        dataTier = cms.untracked.string('GEN-SIM-DIGI-RECO'),
+        filterName = cms.untracked.string('')
+    ),
+    eventAutoFlushCompressedSize = cms.untracked.int32(10485760),
+    fileName = cms.untracked.string('SingleMuPt100_pythia8_cfi_SIM.root'),
+    outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
+    splitLevel = cms.untracked.int32(0)
+)
+
+process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
+    dataset = cms.untracked.PSet(
+        dataTier = cms.untracked.string('DQMIO'),
+        filterName = cms.untracked.string('')
+    ),
+    fileName = cms.untracked.string('SingleMuPt100_pythia8_cfi_SIM_inDQM.root'),
+    outputCommands = process.DQMEventContent.outputCommands,
+    splitLevel = cms.untracked.int32(0)
+)
+
+# use new TrackerSimHitProducer
+process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
+
 # define a path to run
-process.demo = cms.Path(process.fastSimProducer)
+process.simulation_step = cms.Path(process.fastSimProducer)
+
+process.reconstruction_befmix_step = cms.Path(process.reconstruction_befmix)
+process.FEVTDEBUGHLToutput_step = cms.EndPath(process.FEVTDEBUGHLToutput)
+process.DQMoutput_step = cms.EndPath(process.DQMoutput)
+
+# Schedule definition
+#process.schedule = cms.Schedule(process.simulation_step,process.FEVTDEBUGHLToutput_step,process.DQMoutput_step)
+process.schedule = cms.Schedule(process.simulation_step,process.reconstruction_befmix_step,process.FEVTDEBUGHLToutput_step,process.DQMoutput_step)
 
 # debugging options
 # debug messages will only be printed for packages compiled with following command
