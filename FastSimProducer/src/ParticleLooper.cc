@@ -176,11 +176,16 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     {
     	// some handy pointers and references
     	const HepMC::GenParticle & particle = **genParticleIterator_;
-    	const HepMC::GenVertex & productionVertex = *particle.production_vertex();
+    	const HepMC::GenVertex * productionVertex = particle.production_vertex();
     	const HepMC::GenVertex * endVertex = particle.end_vertex();
 
+        // skip incoming particles
+        if(!productionVertex){
+            continue;
+        }
+
     	// particle must be produced within the beampipe
-    	if(productionVertex.position().perp2()*lengthUnitConversionFactor2_ > beamPipeRadius2_)
+    	if(productionVertex->position().perp2()*lengthUnitConversionFactor2_ > beamPipeRadius2_)
     	{
     	    continue;
     	}
@@ -193,10 +198,10 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	// make the particle
     	std::unique_ptr<Particle> newParticle(
     	    new Particle(particle.pdg_id(),
-    			 math::XYZTLorentzVector(productionVertex.position().x()*lengthUnitConversionFactor_,
-    						 productionVertex.position().y()*lengthUnitConversionFactor_,
-    						 productionVertex.position().z()*lengthUnitConversionFactor_,
-    						 productionVertex.position().t()*timeUnitConversionFactor_),
+    			 math::XYZTLorentzVector(productionVertex->position().x()*lengthUnitConversionFactor_,
+    						 productionVertex->position().y()*lengthUnitConversionFactor_,
+    						 productionVertex->position().z()*lengthUnitConversionFactor_,
+    						 productionVertex->position().t()*timeUnitConversionFactor_),
     			 math::XYZTLorentzVector(particle.momentum().x()*momentumUnitConversionFactor_,
     						 particle.momentum().y()*momentumUnitConversionFactor_,
     						 particle.momentum().z()*momentumUnitConversionFactor_,
@@ -206,7 +211,7 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	// try to get the life time of the particle from the genEvent
     	if(endVertex)
     	{
-    	    double labFrameLifeTime = (endVertex->position().t() - productionVertex.position().t())*timeUnitConversionFactor_;
+    	    double labFrameLifeTime = (endVertex->position().t() - productionVertex->position().t())*timeUnitConversionFactor_;
     	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
     	}
 
