@@ -111,6 +111,8 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
 process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.simMuonCSCDigis.InputCollection = cms.string("MuonCSCHits")
+process.simMuonCSCDigis.mixLabel = cms.string("fastSimProducer")
 
 # Path and EndPath definitions
 process.simulation_step = cms.Path(process.fastSimProducer)

@@ -20,6 +20,9 @@ fastSimProducer = cms.EDProducer(
                 className = cms.string("fastsim::Bremsstrahlung"),
                 minPhotonEnergy = cms.double(0.1),
                 minPhotonEnergyFraction = cms.double(0.005)
-                )
+                ),
+            dummyHits = cms.PSet(
+                className = cms.string("fastsim::DummyHitProducer")
+                ),
             ),
     )

@@ -21,6 +21,9 @@ TrackerMaterialBlock = cms.PSet(
                 minPhotonEnergyFraction = cms.double(0.005)
                 )
             ),
+            dummyHits = cms.PSet(
+                className = cms.string("dummyHits")
+                ),
         BarrelLayers = cms.VPSet(
             ########### Beam Pipe ###########
             #PIPE
@@ -160,7 +163,7 @@ TrackerMaterialBlock = cms.PSet(
                 radius = cms.untracked.double(120.0),
                 limits = cms.untracked.vdouble(0.0, 120.0, 299.9),
                 thickness = cms.untracked.vdouble(0.042, 0.1596),
-                interactionModels = _trackerMaterialInteractionModels
+                interactionModels = cms.untracked.vstring("trackerSimHits","bremsstrahlung", "dummyHits")
             ),
         ),
 
