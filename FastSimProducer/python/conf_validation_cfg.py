@@ -45,27 +45,152 @@ process.source = cms.Source("PoolSource",
 
 # configure random number generator for simhit production
 process.load('Configuration.StandardSequences.Services_cff')
-process.RandomNumberGeneratorService = cms.Service(
-    "RandomNumberGeneratorService",
+#process.RandomNumberGeneratorService = cms.Service(
+#    "RandomNumberGeneratorService",
+#    fastSimProducer = cms.PSet(
+#        initialSeed = cms.untracked.uint32(234567),
+#        engineName = cms.untracked.string('TRandom3')
+#        ),
+#    siTrackerGaussianSmearingRecHits = cms.PSet(
+#         initialSeed = cms.untracked.uint32(24680),
+#         engineName = cms.untracked.string('TRandom3')
+#     ),
+#    mix = cms.PSet(
+#         initialSeed = cms.untracked.uint32(12345),
+#         engineName = cms.untracked.string('HepJamesRandom')
+#     ),
+#    simMuonCSCDigis = cms.PSet(
+#         initialSeed = cms.untracked.uint32(11223344),
+#         engineName = cms.untracked.string('HepJamesRandom')
+#     ),
+#    )
+
+# How can I append the fastSimProducer = cms.PSet(...) to process.RandomNumberGeneratorService instead of copying everything?
+process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
     fastSimProducer = cms.PSet(
         initialSeed = cms.untracked.uint32(234567),
         engineName = cms.untracked.string('TRandom3')
-        ),
-    siTrackerGaussianSmearingRecHits = cms.PSet(
-         initialSeed = cms.untracked.uint32(24680),
-         engineName = cms.untracked.string('TRandom3')
-     ),
+    ),
+    externalLHEProducer = cms.PSet(
+        initialSeed = cms.untracked.uint32(234567),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    generator = cms.PSet(
+        initialSeed = cms.untracked.uint32(123456789),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    VtxSmeared = cms.PSet(
+        initialSeed = cms.untracked.uint32(98765432),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    LHCTransport = cms.PSet(
+        initialSeed = cms.untracked.uint32(87654321),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    hiSignalLHCTransport = cms.PSet(
+        initialSeed = cms.untracked.uint32(88776655),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    g4SimHits = cms.PSet(
+        initialSeed = cms.untracked.uint32(11),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
     mix = cms.PSet(
-         initialSeed = cms.untracked.uint32(12345),
-         engineName = cms.untracked.string('HepJamesRandom')
-     ),
+        initialSeed = cms.untracked.uint32(12345),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    mixData = cms.PSet(
+        initialSeed = cms.untracked.uint32(12345),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    simSiStripDigiSimLink = cms.PSet(
+        initialSeed = cms.untracked.uint32(1234567),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    simMuonDTDigis = cms.PSet(
+        initialSeed = cms.untracked.uint32(1234567),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
     simMuonCSCDigis = cms.PSet(
-         initialSeed = cms.untracked.uint32(11223344),
-         engineName = cms.untracked.string('HepJamesRandom')
-     ),
-    )
+        initialSeed = cms.untracked.uint32(11223344),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    simMuonRPCDigis = cms.PSet(
+        initialSeed = cms.untracked.uint32(1234567),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    hiSignal = cms.PSet(
+        initialSeed = cms.untracked.uint32(123456789),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    hiSignalG4SimHits = cms.PSet(
+        initialSeed = cms.untracked.uint32(11),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    famosPileUp = cms.PSet(
+        initialSeed = cms.untracked.uint32(918273),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    mixGenPU = cms.PSet(
+        initialSeed = cms.untracked.uint32(918273), # intentionally the same as famosPileUp
+        engineName = cms.untracked.string('TRandom3')
+    ),    
+    mixSimCaloHits = cms.PSet(
+         initialSeed = cms.untracked.uint32(918273), 
+         engineName = cms.untracked.string('TRandom3')
+    ),
+    mixRecoTracks = cms.PSet(
+         initialSeed = cms.untracked.uint32(918273), 
+         engineName = cms.untracked.string('TRandom3')
+    ),                                           
+    famosSimHits = cms.PSet(
+        initialSeed = cms.untracked.uint32(13579),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    siTrackerGaussianSmearingRecHits = cms.PSet(
+        initialSeed = cms.untracked.uint32(24680),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    ecalRecHit = cms.PSet(
+        initialSeed = cms.untracked.uint32(654321),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    ecalPreshowerRecHit = cms.PSet(
+        initialSeed = cms.untracked.uint32(6541321),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    hbhereco = cms.PSet(
+        initialSeed = cms.untracked.uint32(541321),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    horeco = cms.PSet(
+        initialSeed = cms.untracked.uint32(541321),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    hfreco = cms.PSet(
+        initialSeed = cms.untracked.uint32(541321),
+        engineName = cms.untracked.string('TRandom3')
+    ),    
+    paramMuons = cms.PSet(
+        initialSeed = cms.untracked.uint32(54525),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    l1ParamMuons = cms.PSet(
+        initialSeed = cms.untracked.uint32(6453209),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    MuonSimHits = cms.PSet(
+        initialSeed = cms.untracked.uint32(987346),
+        engineName = cms.untracked.string('TRandom3')
+    ),
+    simBeamSpotFilter = cms.PSet(
+        initialSeed = cms.untracked.uint32(87654321),
+        engineName = cms.untracked.string('HepJamesRandom')
+    ),
+    saveFileName = cms.untracked.string('')
+)
 
-# output
+# Remaining Steps
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 process.load('FastSimulation.Configuration.SimIdeal_cff')
@@ -76,6 +201,43 @@ process.load('Configuration.StandardSequences.DigiToRaw_cff')
 process.load('Configuration.StandardSequences.L1Reco_cff')
 process.load('FastSimulation.Configuration.Reconstruction_AftMix_cff')
 process.load('Configuration.StandardSequences.Validation_cff')
+
+
+# use new TrackerSimHitProducer
+process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.simMuonCSCDigis.InputCollection = cms.string("fastSimProducerMuonCSCHits")
+
+process.theMixObjects.mixCH.input = cms.VInputTag(cms.InputTag("fastSimProducer","EcalHitsEB"), cms.InputTag("fastSimProducer","EcalHitsEE"), cms.InputTag("fastSimProducer","EcalHitsES"), cms.InputTag("fastSimProducer","HcalHits"))
+process.theMixObjects.mixSH.input = cms.VInputTag(cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
+process.theMixObjects.mixTracks.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
+process.theMixObjects.mixVertices.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
+
+process.mixSimHits.input = cms.VInputTag(cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
+
+process.theDigitizersValid.mergedtruth.simHitCollections = cms.PSet(
+        muon = cms.VInputTag(cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonRPCHits")),
+        trackerAndPixel = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+    )
+process.theDigitizersValid.mergedtruth.simTrackCollection = cms.InputTag("fastSimProducer")
+process.theDigitizersValid.mergedtruth.simVertexCollection = cms.InputTag("fastSimProducer")
+process.theDigitizersValid.ecal.hitsProducer = cms.string('fastSimProducer')
+process.theDigitizersValid.hcal.hitsProducer = cms.string('fastSimProducer')
+
+process.mix.hitsProducer = cms.string('fastSimProducer')
+process.mix.mixObjects  = cms.PSet(process.theMixObjects)
+process.mix.digitizers = cms.PSet(process.theDigitizersValid)
+
+process.trackingParticles.simHitCollections = cms.PSet(
+        muon = cms.VInputTag(cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonRPCHits")),
+        trackerAndPixel = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+    )
+process.simHitTPAssocProducer.simHitSrc = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"), cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"))
+process.simMuonDTDigis.InputCollection = cms.string('fastSimProducerMuonDTHits')
+process.simMuonRPCDigis.InputCollection = cms.string('fastSimProducerMuonRPCHits')
+
+
 
 # load simhit producer
 process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
@@ -107,12 +269,6 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
     splitLevel = cms.untracked.int32(0)
 )
 
-# use new TrackerSimHitProducer
-process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
-process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
-process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
-process.simMuonCSCDigis.InputCollection = cms.string("MuonCSCHits")
-process.simMuonCSCDigis.mixLabel = cms.string("fastSimProducer")
 
 # Path and EndPath definitions
 process.simulation_step = cms.Path(process.fastSimProducer)
@@ -125,6 +281,9 @@ process.reconstruction_step = cms.Path(process.reconstruction)
 process.validation_step = cms.EndPath(process.tracksValidationTrackingOnly)
 process.FEVTDEBUGHLToutput_step = cms.EndPath(process.FEVTDEBUGHLToutput)
 process.DQMoutput_step = cms.EndPath(process.DQMoutput)
+
+#process.content=cms.EDAnalyzer('EventContentAnalyzer')
+#process.content_step = cms.Path(process.content)
 
 # Schedule definition
 #process.schedule = cms.Schedule(process.simulation_step,process.FEVTDEBUGHLToutput_step,process.DQMoutput_step)
@@ -142,4 +301,3 @@ process.schedule = cms.Schedule(process.simulation_step,process.reconstruction_b
 #        ),
 #    debugModules = cms.untracked.vstring('fastSimProducer')
 #    )
-
