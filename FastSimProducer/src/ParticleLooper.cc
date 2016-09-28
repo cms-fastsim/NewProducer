@@ -158,7 +158,10 @@ unsigned fastsim::ParticleLooper::addSimVertex(
 unsigned fastsim::ParticleLooper::addSimTrack(const fastsim::Particle * particle)
 {
     int simTrackIndex = simTracks_->size();
-    simTracks_->emplace_back(particle->pdgId(),particle->position(),particle->simVertexIndex(),particle->genParticleIndex());
+    simTracks_->emplace_back(particle->pdgId(),
+                    particle->position(),
+                    particle->simVertexIndex(),
+                    particle->genParticleIndex());
     simTracks_->back().setTrackId(simTrackIndex);
     return simTrackIndex;
 }
@@ -214,6 +217,9 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
     	    double labFrameLifeTime = (endVertex->position().t() - productionVertex->position().t())*timeUnitConversionFactor_;
     	    newParticle->setRemainingProperLifeTime(labFrameLifeTime * newParticle->gamma());
     	}
+
+        // TODO: THIS HAS TO BE FIXED! E.g. the products of a b-decay should point to that vertex and not to the primary vertex!
+        newParticle->setSimVertexIndex(0);
 
         //Simon: fix! iterator not increased in case of return!
         ++genParticleIterator_; ++genParticleIndex_;

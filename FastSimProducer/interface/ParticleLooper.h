@@ -7,13 +7,16 @@
 #include "memory"
 // TODO: TREAT PARTICLE FILTER PROPERLY
 
+#include "SimDataFormats/Track/interface/SimTrack.h"
+#include "SimDataFormats/Vertex/interface/SimVertex.h"
+
 namespace HepPDT
 {
     class ParticleDataTable;
 }
 
-class SimTrack;
-class SimVertex;
+//class SimTrack;
+//class SimVertex;
 class RandomEngineAndDistribution;
 
 namespace fastsim {
@@ -50,6 +53,7 @@ namespace fastsim {
 	{
 	    return std::move(simVertices_);
 	}
+
 
     private:
 

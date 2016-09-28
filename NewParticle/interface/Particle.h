@@ -37,8 +37,8 @@ namespace fastsim
 	const math::XYZTLorentzVector & momentum() const {return momentum_;}
 	double remainingProperLifeTime() const {return remainingProperLifeTime_;}
 	int simTrackIndex() const {return simTrackIndex_;}
-	int simVertexIndex() const {return simTrackIndex_;}
-	int genParticleIndex() const {return simTrackIndex_;}
+	int simVertexIndex() const {return simVertexIndex_;}
+	int genParticleIndex() const {return genParticleIndex_;}
 	bool isStable() const {return remainingProperLifeTime_ == -1.;}
 
 	// other

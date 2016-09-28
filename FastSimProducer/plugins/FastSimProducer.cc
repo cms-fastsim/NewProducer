@@ -150,7 +150,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				LogDebug(MESSAGECATEGORY) << "   interact with " << *interactionModel;
 				std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
 				interactionModel->interact(*particle,*layer,secondaries,random);
-				particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
+				if(secondaries.size()>0) particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
 		    }
 
 		    // kinematic cuts
@@ -172,7 +172,7 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		    std::vector<std::unique_ptr<fastsim::Particle> > secondaries;
 		    decayer_.decay(*particle,secondaries,random.theEngine());
 		    LogDebug(MESSAGECATEGORY) << "   decay has " << secondaries.size() << " products";
-		    particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
+		    if(secondaries.size()>0) particleLooper.addSecondaries(particle->position(),particle->simTrackIndex(),secondaries);
 		}
 		
 		LogDebug(MESSAGECATEGORY) << "################################"

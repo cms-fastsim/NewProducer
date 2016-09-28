@@ -5,7 +5,7 @@ from Configuration.StandardSequences.Eras import eras
 process = cms.Process("DEMO",eras.Run2_2016,eras.fastSim)
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10)
+    input = cms.untracked.int32(-1)
 )
 
 # load particle data table
@@ -45,150 +45,44 @@ process.source = cms.Source("PoolSource",
 
 # configure random number generator for simhit production
 process.load('Configuration.StandardSequences.Services_cff')
-#process.RandomNumberGeneratorService = cms.Service(
-#    "RandomNumberGeneratorService",
-#    fastSimProducer = cms.PSet(
-#        initialSeed = cms.untracked.uint32(234567),
-#        engineName = cms.untracked.string('TRandom3')
-#        ),
-#    siTrackerGaussianSmearingRecHits = cms.PSet(
-#         initialSeed = cms.untracked.uint32(24680),
-#         engineName = cms.untracked.string('TRandom3')
-#     ),
-#    mix = cms.PSet(
-#         initialSeed = cms.untracked.uint32(12345),
-#         engineName = cms.untracked.string('HepJamesRandom')
-#     ),
-#    simMuonCSCDigis = cms.PSet(
-#         initialSeed = cms.untracked.uint32(11223344),
-#         engineName = cms.untracked.string('HepJamesRandom')
-#     ),
-#    )
 
 # How can I append the fastSimProducer = cms.PSet(...) to process.RandomNumberGeneratorService instead of copying everything?
 process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
+    externalLHEProducer = cms.PSet(process.RandomNumberGeneratorService.externalLHEProducer),
+    generator = cms.PSet(process.RandomNumberGeneratorService.generator),
+    VtxSmeared = cms.PSet(process.RandomNumberGeneratorService.VtxSmeared),
+    LHCTransport = cms.PSet(process.RandomNumberGeneratorService.LHCTransport),
+    hiSignalLHCTransport = cms.PSet(process.RandomNumberGeneratorService.hiSignalLHCTransport),
+    g4SimHits = cms.PSet(process.RandomNumberGeneratorService.g4SimHits),
+    mix = cms.PSet(process.RandomNumberGeneratorService.mix),
+    mixData = cms.PSet(process.RandomNumberGeneratorService.mixData),
+    simSiStripDigiSimLink = cms.PSet(process.RandomNumberGeneratorService.simSiStripDigiSimLink),
+    simMuonCSCDigis = cms.PSet(process.RandomNumberGeneratorService.simMuonCSCDigis),
+    simMuonRPCDigis = cms.PSet(process.RandomNumberGeneratorService.simMuonRPCDigis),
+    simMuonDTDigis = cms.PSet(process.RandomNumberGeneratorService.simMuonDTDigis),
+    hiSignal = cms.PSet(process.RandomNumberGeneratorService.hiSignal),
+    hiSignalG4SimHits = cms.PSet(process.RandomNumberGeneratorService.hiSignalG4SimHits),
+    famosPileUp = cms.PSet(process.RandomNumberGeneratorService.famosPileUp),
+    mixGenPU = cms.PSet(process.RandomNumberGeneratorService.mixGenPU),
+    mixSimCaloHits = cms.PSet(process.RandomNumberGeneratorService.mixSimCaloHits),
+    mixRecoTracks = cms.PSet(process.RandomNumberGeneratorService.mixRecoTracks),
+    famosSimHits = cms.PSet(process.RandomNumberGeneratorService.famosSimHits),
+    siTrackerGaussianSmearingRecHits = cms.PSet(process.RandomNumberGeneratorService.siTrackerGaussianSmearingRecHits),
+    ecalRecHit = cms.PSet(process.RandomNumberGeneratorService.ecalRecHit),
+    ecalPreshowerRecHit = cms.PSet(process.RandomNumberGeneratorService.ecalPreshowerRecHit),
+    hbhereco = cms.PSet(process.RandomNumberGeneratorService.hbhereco),
+    horeco = cms.PSet(process.RandomNumberGeneratorService.horeco),
+    hfreco = cms.PSet(process.RandomNumberGeneratorService.hfreco),
+    paramMuons = cms.PSet(process.RandomNumberGeneratorService.paramMuons),
+    l1ParamMuons = cms.PSet(process.RandomNumberGeneratorService.l1ParamMuons),
+    MuonSimHits = cms.PSet(process.RandomNumberGeneratorService.MuonSimHits),
+    simBeamSpotFilter = cms.PSet(process.RandomNumberGeneratorService.simBeamSpotFilter),
     fastSimProducer = cms.PSet(
         initialSeed = cms.untracked.uint32(234567),
         engineName = cms.untracked.string('TRandom3')
     ),
-    externalLHEProducer = cms.PSet(
-        initialSeed = cms.untracked.uint32(234567),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    generator = cms.PSet(
-        initialSeed = cms.untracked.uint32(123456789),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    VtxSmeared = cms.PSet(
-        initialSeed = cms.untracked.uint32(98765432),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    LHCTransport = cms.PSet(
-        initialSeed = cms.untracked.uint32(87654321),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    hiSignalLHCTransport = cms.PSet(
-        initialSeed = cms.untracked.uint32(88776655),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    g4SimHits = cms.PSet(
-        initialSeed = cms.untracked.uint32(11),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    mix = cms.PSet(
-        initialSeed = cms.untracked.uint32(12345),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    mixData = cms.PSet(
-        initialSeed = cms.untracked.uint32(12345),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    simSiStripDigiSimLink = cms.PSet(
-        initialSeed = cms.untracked.uint32(1234567),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    simMuonDTDigis = cms.PSet(
-        initialSeed = cms.untracked.uint32(1234567),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    simMuonCSCDigis = cms.PSet(
-        initialSeed = cms.untracked.uint32(11223344),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    simMuonRPCDigis = cms.PSet(
-        initialSeed = cms.untracked.uint32(1234567),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    hiSignal = cms.PSet(
-        initialSeed = cms.untracked.uint32(123456789),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    hiSignalG4SimHits = cms.PSet(
-        initialSeed = cms.untracked.uint32(11),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
-    famosPileUp = cms.PSet(
-        initialSeed = cms.untracked.uint32(918273),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    mixGenPU = cms.PSet(
-        initialSeed = cms.untracked.uint32(918273), # intentionally the same as famosPileUp
-        engineName = cms.untracked.string('TRandom3')
-    ),    
-    mixSimCaloHits = cms.PSet(
-         initialSeed = cms.untracked.uint32(918273), 
-         engineName = cms.untracked.string('TRandom3')
-    ),
-    mixRecoTracks = cms.PSet(
-         initialSeed = cms.untracked.uint32(918273), 
-         engineName = cms.untracked.string('TRandom3')
-    ),                                           
-    famosSimHits = cms.PSet(
-        initialSeed = cms.untracked.uint32(13579),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    siTrackerGaussianSmearingRecHits = cms.PSet(
-        initialSeed = cms.untracked.uint32(24680),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    ecalRecHit = cms.PSet(
-        initialSeed = cms.untracked.uint32(654321),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    ecalPreshowerRecHit = cms.PSet(
-        initialSeed = cms.untracked.uint32(6541321),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    hbhereco = cms.PSet(
-        initialSeed = cms.untracked.uint32(541321),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    horeco = cms.PSet(
-        initialSeed = cms.untracked.uint32(541321),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    hfreco = cms.PSet(
-        initialSeed = cms.untracked.uint32(541321),
-        engineName = cms.untracked.string('TRandom3')
-    ),    
-    paramMuons = cms.PSet(
-        initialSeed = cms.untracked.uint32(54525),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    l1ParamMuons = cms.PSet(
-        initialSeed = cms.untracked.uint32(6453209),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    MuonSimHits = cms.PSet(
-        initialSeed = cms.untracked.uint32(987346),
-        engineName = cms.untracked.string('TRandom3')
-    ),
-    simBeamSpotFilter = cms.PSet(
-        initialSeed = cms.untracked.uint32(87654321),
-        engineName = cms.untracked.string('HepJamesRandom')
-    ),
     saveFileName = cms.untracked.string('')
-)
+    )
 
 # Remaining Steps
 process.load('Configuration.EventContent.EventContent_cff')
@@ -237,7 +131,8 @@ process.simHitTPAssocProducer.simHitSrc = cms.VInputTag(cms.InputTag("fastSimPro
 process.simMuonDTDigis.InputCollection = cms.string('fastSimProducerMuonDTHits')
 process.simMuonRPCDigis.InputCollection = cms.string('fastSimProducerMuonRPCHits')
 
-
+process.mixedTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.trackingParticleNumberOfLayersProducer.simHits = cms.VInputTag("fastSimProducer:TrackerHits")
 
 # load simhit producer
 process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
@@ -282,8 +177,8 @@ process.validation_step = cms.EndPath(process.tracksValidationTrackingOnly)
 process.FEVTDEBUGHLToutput_step = cms.EndPath(process.FEVTDEBUGHLToutput)
 process.DQMoutput_step = cms.EndPath(process.DQMoutput)
 
-#process.content=cms.EDAnalyzer('EventContentAnalyzer')
-#process.content_step = cms.Path(process.content)
+process.content=cms.EDAnalyzer('EventContentAnalyzer')
+process.content_step = cms.Path(process.content)
 
 # Schedule definition
 #process.schedule = cms.Schedule(process.simulation_step,process.FEVTDEBUGHLToutput_step,process.DQMoutput_step)
