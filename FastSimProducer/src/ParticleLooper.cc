@@ -131,6 +131,11 @@ void fastsim::ParticleLooper::addSecondaries(
 	return;
     }
 
+    // no need to create vertex in case no particles are produced
+    if(secondaries.size()==0){
+    	return;
+    }
+
     // add simVertex
     unsigned simVertexIndex = addSimVertex(vertexPosition,parentSimTrackIndex);
 
