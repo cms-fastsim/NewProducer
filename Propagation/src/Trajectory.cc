@@ -7,7 +7,7 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 
-const double fastsim::Trajectory::speedOfLight_ = 29.98; // [cm per ns]
+const double fastsim::Trajectory::speedOfLight_ = 29.9792458; // [cm per ns]
 
 fastsim::Trajectory::Trajectory(const fastsim::Particle & particle)
 {

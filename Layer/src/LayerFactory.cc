@@ -184,7 +184,7 @@ std::unique_ptr<fastsim::Layer> fastsim::LayerFactory::createLayer(const fastsim
     // magnetic field
     // -----------------------------
     
-    layer->magneticFieldHist_.reset(new TH1F("h", "h", 100, 0.,isForward ? magneticFieldHistMaxR_ : magneticFieldHistMaxZ_ ));
+    layer->magneticFieldHist_.reset(new TH1F("h", "h", 100, 0., isForward ? magneticFieldHistMaxR_ : magneticFieldHistMaxZ_));
     layer->magneticFieldHist_->SetDirectory(0);
     for(int i = 1; i <= 101; i++)
     {

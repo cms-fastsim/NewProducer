@@ -150,11 +150,11 @@ void fastsim::HelixTrajectory::move(double deltaTimeC)
 	   position_.Z() + momentum_.Z()/momentum_.E()*deltaTimeC,
 	   position_.T() + deltaT);
     // Rotation defined by
-    // x' = x cos θ - y sin θ
-    // y' = x sin θ + y cos θ
+    // x' = x cos θ + y sin θ
+    // y' = - x sin θ + y cos θ
     momentum_.SetXYZT(
-	   momentum_.X()*std::cos(deltaPhi) - momentum_.Y()*std::sin(deltaPhi),
-	   momentum_.X()*std::sin(deltaPhi) + momentum_.Y()*std::cos(deltaPhi),
+	   momentum_.X()*std::cos(deltaPhi) + momentum_.Y()*std::sin(deltaPhi),
+	   - momentum_.X()*std::sin(deltaPhi) + momentum_.Y()*std::cos(deltaPhi),
 	   momentum_.Z(),
 	   momentum_.E());
 

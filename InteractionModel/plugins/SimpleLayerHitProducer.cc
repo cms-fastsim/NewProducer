@@ -52,7 +52,7 @@ void fastsim::SimpleLayerHitProducer::storeProducts(edm::Event & iEvent)
 {
     LogDebug("FastSimulation") << "      storing products" << std::endl;
     iEvent.put(std::move(layerHits_));
-    //Simon: quick fix. Can be done better?
+    //quick fix. Can be done better
     layerHits_.reset(new std::vector<math::XYZTLorentzVector>());
 }
 

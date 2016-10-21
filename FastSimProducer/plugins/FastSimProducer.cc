@@ -143,6 +143,9 @@ FastSimProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		{
 		    LogDebug(MESSAGECATEGORY) << "   moved to next layer: " << *layer
 					      << "\n   new state: " << *particle;
+
+			//std::cout << *particle << std::endl;
+			//if(layer) std::cout << layer->getMagneticFieldZ(particle->position()) << std::endl;
 		    
 		    // perform interaction between layer and particle
 		    for(fastsim::InteractionModel * interactionModel : layer->getInteractionModels())

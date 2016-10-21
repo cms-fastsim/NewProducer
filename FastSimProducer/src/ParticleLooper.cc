@@ -70,7 +70,6 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     else
     {
 	   particle = nextGenParticle();
-       //Simon: Check if it was the last GenParticle
        if(!particle) return 0;
     }
 
@@ -226,7 +225,6 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextGenParticle()
         // TODO: THIS HAS TO BE FIXED! E.g. the products of a b-decay should point to that vertex and not to the primary vertex!
         newParticle->setSimVertexIndex(0);
 
-        //Simon: fix! iterator not increased in case of return!
         ++genParticleIterator_; ++genParticleIndex_;
     	// and return
     	return std::move(newParticle);

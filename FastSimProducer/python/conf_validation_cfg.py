@@ -5,7 +5,7 @@ from Configuration.StandardSequences.Eras import eras
 process = cms.Process("DEMO",eras.Run2_2016,eras.fastSim)
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(10)
 )
 
 # load particle data table
@@ -14,6 +14,7 @@ process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
 process.load('FastSimulation.Configuration.Geometries_MC_cff')
 # load magnetic field
 process.load('Configuration.StandardSequences.MagneticField_cff')
+#process.load("Configuration.StandardSequences.MagneticField_0T_cff") 
 #load and set conditions (required by geometry and magnetic field)
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
@@ -134,13 +135,30 @@ process.simMuonRPCDigis.InputCollection = cms.string('fastSimProducerMuonRPCHits
 process.mixedTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
 process.trackingParticleNumberOfLayersProducer.simHits = cms.VInputTag("fastSimProducer:TrackerHits")
 
+process.initialStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.lowPtTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.pixelLessStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.pixelPairStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.tobTecStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.AllHcalDigisValidation.simHits = cms.untracked.InputTag("fastSimProducer","HcalHits")
+process.AllSimHitsValidation.ModuleLabel = cms.untracked.string('fastSimProducer')
+process.mixCollectionValidation.mixObjects.mixSH.input = cms.VInputTag(cms.InputTag("MuonSimHits","MuonCSCHits"), cms.InputTag("MuonSimHits","MuonDTHits"), cms.InputTag("MuonSimHits","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
+
+
+
 # load simhit producer
 process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
 
 # Output definition
-process.FEVTDEBUGHLTEventContent.outputCommands.append(
+process.FEVTDEBUGHLTEventContent.outputCommands.extend([
         'keep *_fastSimProducer_*_*',
-    )
+        'keep FastTrackerRecHits*_*_*_*'
+    ])
+
+#process.FEVTDEBUGHLTEventContent.outputCommands.append(
+#        'keep *',
+#    )
+
 
 # Output definition
 process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
@@ -149,7 +167,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
         filterName = cms.untracked.string('')
     ),
     eventAutoFlushCompressedSize = cms.untracked.int32(10485760),
-    fileName = cms.untracked.string('dqm_fastsim.root'),
+    fileName = cms.untracked.string('muGun_validation.root'),
     outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -159,7 +177,7 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
         dataTier = cms.untracked.string('DQMIO'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('dqm_fastsim_inDQM.root'),
+    fileName = cms.untracked.string('dqm_muGun_validation.root'),
     outputCommands = process.DQMEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )

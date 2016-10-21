@@ -15,6 +15,8 @@ USER_CXXFLAGS="-g -D=EDM_ML_DEBUG" scram b -j 8 # special flags to switch on deb
 source FastSimulation/FastSimProducer/test/gen.sh
 # pass the generated events to simulation
 cmsRun FastSimulation/FastSimProducer/python/conf_cfg.py
+# to run validation do instead
+cmsRun FastSimulation/FastSimProducer/python/conf_validation_cfg.py
 ```
 
 # More info on the project

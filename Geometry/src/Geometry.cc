@@ -30,8 +30,8 @@ Geometry::Geometry(const edm::ParameterSet& cfg)
     , trackerAlignmentLabel_(cfg.getUntrackedParameter<std::string>("trackerAlignmentLabel",""))
     , barrelLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("BarrelLayers"))
     , forwardLayerCfg_(cfg.getParameter<std::vector<edm::ParameterSet>>("ForwardLayers"))
-    , maxRadius_(cfg.getUntrackedParameter<double>("radius",0.))
-    , maxZ_(cfg.getUntrackedParameter<double>("z",0.))
+    , maxRadius_(cfg.getUntrackedParameter<double>("maxRadius",240.))
+    , maxZ_(cfg.getUntrackedParameter<double>("maxZ",600.))
 {};
 
 void Geometry::update(const edm::EventSetup & iSetup,const std::map<std::string,fastsim::InteractionModel*> & interactionModelMap)

@@ -1,5 +1,6 @@
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 // framework
 #include "FWCore/Framework/interface/Event.h"
@@ -50,7 +51,7 @@ namespace fastsim
 	void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random) override;
 	virtual void registerProducts(edm::ProducerBase & producer) const override;
 	virtual void storeProducts(edm::Event & iEvent) override;
-	void createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector);
+	PSimHit* createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector);
     private:
 	const float onSurfaceTolerance_;
 	std::unique_ptr<edm::PSimHitContainer> simHitContainer_;
@@ -72,6 +73,10 @@ void fastsim::TrackerSimHitProducer::registerProducts(edm::ProducerBase & produc
 
 void fastsim::TrackerSimHitProducer::storeProducts(edm::Event & iEvent)
 {
+    std::cout << "Number of Hits: " << simHitContainer_->size() << std::endl;
+    //for(auto shit : *(simHitContainer_.get())){
+    //  std::cout<<shit.detUnitId()<<": "<<shit.localPosition().x()<<","<<shit.localPosition().y()<<std::endl;
+    //}
     iEvent.put(std::move(simHitContainer_), "TrackerHits");
     simHitContainer_.reset(new edm::PSimHitContainer);
 }
@@ -100,34 +105,83 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
     //
     AnalyticalPropagator propagator(&magneticField, anyDirection);
     InsideBoundsMeasurementEstimator est;
-    std::vector<DetWithState> compatibleDetectors = layer.getDetLayer()->compatibleDets(trajectory, propagator,est);
+    std::vector<DetWithState> compatibleDetectors = layer.getDetLayer()->compatibleDets(trajectory, propagator, est);
 
+    // Stores simHits so they can be sorted afterwards
+    std::map<double, PSimHit*> distAndHit;
     //
     // loop over the compatible detectors
     //
     for (const auto & detectorWithState : compatibleDetectors)
     {
-	const GeomDet & detector = *detectorWithState.first;
-	const TrajectoryStateOnSurface & particleState = detectorWithState.second;
-	// if the detector has no components
-	if(detector.isLeaf())
-	{
-	    createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector);
-	}
-	else
-	{
-	    // if the detector has components
-	    for( const auto component : detector.components())
-	    {
-		createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);
-	    }
-	}
+    	const GeomDet & detector = *detectorWithState.first;
+    	const TrajectoryStateOnSurface & particleState = detectorWithState.second;
+    	// if the detector has no components
+    	if(detector.isLeaf())
+    	{
+    	    PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector);
+    	    if(simHit){
+    		  	GlobalPoint hitPos(detector.surface().toGlobal(simHit->localPosition()));
+    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>(hitPos.mag2(), simHit));
+    		  }
+    	}
+    	else
+    	{
+    	    // if the detector has components
+    	    
+    	    for(const auto component : detector.components())
+    	    {
+    		  PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);    		  
+    		  if(simHit){
+    		  	GlobalPoint hitPos(component->surface().toGlobal(simHit->localPosition()));
+    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>(hitPos.mag2(), simHit));
+    		  }
+    	    }
+    	}
     }
+
+    // You have to sort the simHits in the order they occur!
+
+	// The old algorithm (sorting by distance to IP) doesn't seem to make sense to me (what if particle moves inwards??)
+
+	// Detector layers have to be sorted by proximity to particle.position
+	// Doesn't always work! Particle could be already have been propagated in between the layers!
+	// Proximity to previous hit also doesn't work since simHits only store the localPosition
+	// FIX (at least for now): propagate particle backwards a bit to make sure it's outside any components (straight line should work well enough)
+	// I'd like to try old algorithm for the sake of it... However, I'd need a reference to the IP (simTrack vertex) for that :/
+	/*GlobalPoint positionOutside(particle.position().X()-particle.momentum().Px()/sqrt(particle.momentum().Vect().Mag2()),
+		particle.position().Y()-particle.momentum().Py()/sqrt(particle.momentum().Vect().Mag2()),
+		particle.position().Z()-particle.momentum().Pz()/sqrt(particle.momentum().Vect().Mag2()));
+	std::map<double, PSimHit*> distAndHit;
+    for(const auto component : detector.components())
+    {
+	  PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);    		  
+	  if(simHit){
+	  	GlobalPoint hitPos(component->surface().toGlobal(simHit->localPosition()));
+	  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((positionOutside-hitPos).mag2(), simHit));
+	  }
+    }
+
+    for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
+    	simHitContainer_->push_back(*(it->second));
+    }
+    */
+
+    // Try simplest approch. Use (0,0,0) as IP, and check if particle moves inwards
+    // particle moves outwards
+	if(particle.momentum().X()*particle.position().X() + particle.momentum().Y()*particle.position().Y() > 0)
+	    for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
+	    	simHitContainer_->push_back(*(it->second));
+	    }
+	//particle moves inwards
+	else
+	    for(std::map<double, PSimHit*>::reverse_iterator rit = distAndHit.rbegin(); rit != distAndHit.rend(); rit++){
+	    	simHitContainer_->push_back(*(rit->second));
+	    }
 }
 
-void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector)
+PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector)
 {
-
     //
     // determine position and momentum of particle in the coordinate system of the detector
     //
@@ -158,7 +212,7 @@ void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOn
 	// case propagation fails
 	else
 	{
-	    return;
+	    return 0;
 	}
     }
 
@@ -170,7 +224,7 @@ void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOn
     float pZ = localMomentum.z();
     LocalPoint entry = localPosition + (-halfThick/pZ) * localMomentum;
     LocalPoint exit = localPosition + halfThick/pZ * localMomentum;
-    float tof = particle.globalPosition().mag() / 30. ; // in nanoseconds, FIXME: very approximate
+    float tof = particle.globalPosition().mag() / 29.9792458 ; // in nanoseconds
     
     //
     // make sure the simhit is physically on the module
@@ -183,14 +237,21 @@ void fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOn
 	boundX *=  1. - localPosition.y()/detectorPlane.position().perp();
     if(fabs(localPosition.x()) > boundX  || fabs(localPosition.y()) > boundY )
     {
-	return;
+        std::cout<<"Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= out of boundary"<<std::endl;
+	   return 0;
     }
 
+    /*    std::cout << "Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= " 
+        << localPosition.x() << " " 
+        << localPosition.y() << " " 
+//        << sqrt(localPosition.x()*localPosition.x() + localPosition.y()*localPosition.y()) << " " 
+        << localPosition.z() << std::endl;
+*/
     //
     // create the hit
     //
     double energyDeposit = 0.; // do something about the energy deposit
-    simHitContainer_->emplace_back( entry, exit, localMomentum.mag(), tof, energyDeposit, pdgId,
+        return new PSimHit(entry, exit, localMomentum.mag(), tof, energyDeposit, pdgId,
 				   detector.geographicalId().rawId(),simTrackId,
 				   localMomentum.theta(),
 				   localMomentum.phi());

@@ -5,7 +5,9 @@ _trackerMaterialInteractionModels = cms.untracked.vstring("trackerSimHits","brem
 # Material effects to be simulated in the tracker material and associated cuts 
 TrackerMaterialBlock = cms.PSet(
     TrackerMaterial = cms.PSet(
-        #magneticFieldZ = cms.untracked.double(3.8),
+        #magneticFieldZ = cms.untracked.double(0.),
+        maxRadius = cms.untracked.double(120.),
+        maxZ = cms.untracked.double(300.),
         useTrackerRecoGeometryRecord = cms.untracked.bool(True),
         trackerAlignmentLabel = cms.untracked.string("MisAligned"),
         interactionModels = cms.PSet(

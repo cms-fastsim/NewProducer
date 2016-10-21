@@ -249,6 +249,9 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 		particle.setRemainingProperLifeTime(0.);
     }
 
+    // temporary, to get rid of additional hits since there is no ecal and stuff yet
+    if(deltaTime > 100) return 0;
+
     // move particle in space, time and momentum
     if(layer)
     {

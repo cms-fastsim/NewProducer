@@ -14,6 +14,7 @@ process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
 process.load('FastSimulation.Configuration.Geometries_MC_cff')
 # load magnetic field
 process.load('Configuration.StandardSequences.MagneticField_cff')
+#process.load("Configuration.StandardSequences.MagneticField_0T_cff") 
 #load and set conditions (required by geometry and magnetic field)
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
@@ -60,7 +61,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
         filterName = cms.untracked.string('')
     ),
     eventAutoFlushCompressedSize = cms.untracked.int32(10485760),
-    fileName = cms.untracked.string('muGun.root'),
+    fileName = cms.untracked.string('res_muGun.root'),
     outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -70,7 +71,7 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
         dataTier = cms.untracked.string('DQMIO'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('muGun_inDQM.root'),
+    fileName = cms.untracked.string('dqm_res_muGun.root'),
     outputCommands = process.DQMEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
