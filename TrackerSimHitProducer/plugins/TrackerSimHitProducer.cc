@@ -73,7 +73,7 @@ void fastsim::TrackerSimHitProducer::registerProducts(edm::ProducerBase & produc
 
 void fastsim::TrackerSimHitProducer::storeProducts(edm::Event & iEvent)
 {
-    std::cout << "Number of Hits: " << simHitContainer_->size() << std::endl;
+    //std::cout << "Number of Hits: " << simHitContainer_->size() << std::endl;
     //for(auto shit : *(simHitContainer_.get())){
     //  std::cout<<shit.detUnitId()<<": "<<shit.localPosition().x()<<","<<shit.localPosition().y()<<std::endl;
     //}
@@ -109,6 +109,9 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
 
     // Stores simHits so they can be sorted afterwards
     std::map<double, PSimHit*> distAndHit;
+    GlobalPoint positionOutside(particle.position().X()-particle.momentum().Px()/sqrt(particle.momentum().Vect().Mag2())*10.,
+        particle.position().Y()-particle.momentum().Py()/sqrt(particle.momentum().Vect().Mag2())*10.,
+        particle.position().Z()-particle.momentum().Pz()/sqrt(particle.momentum().Vect().Mag2())*10.);
     //
     // loop over the compatible detectors
     //
@@ -122,19 +125,18 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
     	    PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector);
     	    if(simHit){
     		  	GlobalPoint hitPos(detector.surface().toGlobal(simHit->localPosition()));
-    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>(hitPos.mag2(), simHit));
+    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((hitPos-positionOutside).mag2(), simHit));
     		  }
     	}
     	else
     	{
     	    // if the detector has components
-    	    
     	    for(const auto component : detector.components())
     	    {
     		  PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);    		  
     		  if(simHit){
     		  	GlobalPoint hitPos(component->surface().toGlobal(simHit->localPosition()));
-    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>(hitPos.mag2(), simHit));
+    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((hitPos-positionOutside).mag2(), simHit));
     		  }
     	    }
     	}
@@ -161,13 +163,14 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
 	  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((positionOutside-hitPos).mag2(), simHit));
 	  }
     }
-
+*/    
     for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
     	simHitContainer_->push_back(*(it->second));
     }
-    */
-
+    
+/*
     // Try simplest approch. Use (0,0,0) as IP, and check if particle moves inwards
+    // What if particle moves inwards in z direction??
     // particle moves outwards
 	if(particle.momentum().X()*particle.position().X() + particle.momentum().Y()*particle.position().Y() > 0)
 	    for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
@@ -178,6 +181,8 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
 	    for(std::map<double, PSimHit*>::reverse_iterator rit = distAndHit.rbegin(); rit != distAndHit.rend(); rit++){
 	    	simHitContainer_->push_back(*(rit->second));
 	    }
+*/	
+    
 }
 
 PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector)
@@ -237,11 +242,11 @@ PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectorySta
 	boundX *=  1. - localPosition.y()/detectorPlane.position().perp();
     if(fabs(localPosition.x()) > boundX  || fabs(localPosition.y()) > boundY )
     {
-        std::cout<<"Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= out of boundary"<<std::endl;
+       //std::cout<<"Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= out of boundary"<<std::endl;
 	   return 0;
     }
-
-    /*    std::cout << "Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= " 
+/*
+        std::cout << "Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= " 
         << localPosition.x() << " " 
         << localPosition.y() << " " 
 //        << sqrt(localPosition.x()*localPosition.x() + localPosition.y()*localPosition.y()) << " " 

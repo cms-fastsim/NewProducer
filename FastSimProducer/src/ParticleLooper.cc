@@ -23,7 +23,7 @@ fastsim::ParticleLooper::ParticleLooper(
     : genEvent_(&genEvent)
     , genParticleIterator_(genEvent_->particles_begin())
     , genParticleEnd_(genEvent_->particles_end())
-    , genParticleIndex_(0)
+    , genParticleIndex_(1)
     , particleDataTable_(&particleDataTable)
     , beamPipeRadius2_(beamPipeRadius*beamPipeRadius)
     , particleFilter_(&particleFilter)
@@ -163,7 +163,7 @@ unsigned fastsim::ParticleLooper::addSimTrack(const fastsim::Particle * particle
 {
     int simTrackIndex = simTracks_->size();
     simTracks_->emplace_back(particle->pdgId(),
-                    particle->position(),
+                    particle->momentum(),
                     particle->simVertexIndex(),
                     particle->genParticleIndex());
     simTracks_->back().setTrackId(simTrackIndex);

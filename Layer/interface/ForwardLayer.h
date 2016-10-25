@@ -41,7 +41,7 @@ namespace fastsim{
 	
 	bool isOnSurface(const math::XYZTLorentzVector & position) const override
 	{
-	    return fabs(position_ - position.Z()) < epsilonDistance_;
+	    return fabs(position_ - position.Z()) < epsilonDistanceZ_;
 	}
 
     };

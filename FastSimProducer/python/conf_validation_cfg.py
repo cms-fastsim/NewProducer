@@ -5,7 +5,7 @@ from Configuration.StandardSequences.Eras import eras
 process = cms.Process("DEMO",eras.Run2_2016,eras.fastSim)
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10)
+    input = cms.untracked.int32(100)
 )
 
 # load particle data table
@@ -108,6 +108,7 @@ process.theMixObjects.mixCH.input = cms.VInputTag(cms.InputTag("fastSimProducer"
 process.theMixObjects.mixSH.input = cms.VInputTag(cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
 process.theMixObjects.mixTracks.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
 process.theMixObjects.mixVertices.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
+process.mixCollectionValidation.theMixObjects = cms.PSet(process.theMixObjects)
 
 process.mixSimHits.input = cms.VInputTag(cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
 
@@ -128,6 +129,9 @@ process.trackingParticles.simHitCollections = cms.PSet(
         muon = cms.VInputTag(cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonRPCHits")),
         trackerAndPixel = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
     )
+process.trackingParticles.simHitCollections.simTrackCollection = cms.InputTag("fastSimProducer")
+process.trackingParticles.simHitCollections.simVertexCollection = cms.InputTag("fastSimProducer")
+
 process.simHitTPAssocProducer.simHitSrc = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"), cms.InputTag("fastSimProducer","MuonCSCHits"), cms.InputTag("fastSimProducer","MuonDTHits"), cms.InputTag("fastSimProducer","MuonRPCHits"))
 process.simMuonDTDigis.InputCollection = cms.string('fastSimProducerMuonDTHits')
 process.simMuonRPCDigis.InputCollection = cms.string('fastSimProducerMuonRPCHits')
@@ -135,6 +139,12 @@ process.simMuonRPCDigis.InputCollection = cms.string('fastSimProducerMuonRPCHits
 process.mixedTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
 process.trackingParticleNumberOfLayersProducer.simHits = cms.VInputTag("fastSimProducer:TrackerHits")
 
+process.mixSimTracks.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
+process.mixSimVertices.input = cms.VInputTag(cms.InputTag("fastSimProducer"))
+process.detachedTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+process.fastElectronCkfTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
+
+# Not sure if I need all those
 process.initialStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
 process.lowPtTripletStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
 process.pixelLessStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
@@ -143,7 +153,25 @@ process.tobTecStepTrackCandidates.simTracks = cms.InputTag("fastSimProducer")
 process.AllHcalDigisValidation.simHits = cms.untracked.InputTag("fastSimProducer","HcalHits")
 process.AllSimHitsValidation.ModuleLabel = cms.untracked.string('fastSimProducer')
 process.mixCollectionValidation.mixObjects.mixSH.input = cms.VInputTag(cms.InputTag("MuonSimHits","MuonCSCHits"), cms.InputTag("MuonSimHits","MuonDTHits"), cms.InputTag("MuonSimHits","MuonRPCHits"), cms.InputTag("fastSimProducer","TrackerHits"))
-
+process.HltVertexValidationVertices.SimVertexCollection = cms.InputTag("fastSimProducer")
+process.hltMultiTrackValidator.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.multiTrackValidator.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.tkConversionValidation.simTracks = cms.InputTag("fastSimProducer")
+process.trackValidator.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorAllTPEffic.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorAllTPEfficStandalone.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorConversion.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorConversionStandalone.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorConversionTrackingOnly.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorFromPV.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorFromPVAllTP.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorFromPVAllTPStandalone.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorFromPVStandalone.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorGsfTracks.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorLite.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorSeedingTrackingOnly.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorStandalone.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
+process.trackValidatorTrackingOnly.sim = cms.VInputTag(cms.InputTag("fastSimProducer","TrackerHits"))
 
 
 # load simhit producer
