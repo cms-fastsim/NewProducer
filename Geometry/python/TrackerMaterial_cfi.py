@@ -128,7 +128,7 @@ TrackerMaterialBlock = cms.PSet(
             ),
             #TOB3
             cms.PSet(
-                radius = cms.untracked.double(+78.081),
+                radius = cms.untracked.double(78.081),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
                 activeLayer = cms.untracked.string("TOB3"),
@@ -136,7 +136,7 @@ TrackerMaterialBlock = cms.PSet(
             ),
             #TOB4
             cms.PSet(
-                radius = cms.untracked.double(86.786),
+                radius = cms.untracked.double(86.876),
                 limits = cms.untracked.vdouble(0.0, 18.0, 30.0, 36.0, 46.0, 55.0, 108.737),
                 thickness = cms.untracked.vdouble(0.0154, 0.044, 0.022, 0.044, 0.022, 0.044),
                 activeLayer = cms.untracked.string("TOB4"),

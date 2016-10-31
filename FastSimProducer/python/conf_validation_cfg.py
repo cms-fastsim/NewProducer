@@ -25,7 +25,6 @@ process.source = cms.Source("PoolSource",
     dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
     fileNames = cms.untracked.vstring('file:gen_muGun.root'),
     inputCommands = cms.untracked.vstring('keep *', 
-        'drop *_genParticles_*_*', 
         'drop *_genParticlesForJets_*_*', 
         'drop *_kt4GenJets_*_*', 
         'drop *_kt6GenJets_*_*', 
@@ -180,7 +179,8 @@ process.load("FastSimulation.FastSimProducer.fastSimProducer_cff")
 # Output definition
 process.FEVTDEBUGHLTEventContent.outputCommands.extend([
         'keep *_fastSimProducer_*_*',
-        'keep FastTrackerRecHits*_*_*_*'
+        'keep FastTrackerRecHits*_*_*_*',
+        'keep *_genParticles_*_*',
     ])
 
 #process.FEVTDEBUGHLTEventContent.outputCommands.append(

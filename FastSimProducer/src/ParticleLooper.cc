@@ -112,6 +112,10 @@ std::unique_ptr<fastsim::Particle> fastsim::ParticleLooper::nextParticle(const R
     unsigned simTrackIndex = addSimTrack(particle.get());
     particle->setSimTrackIndex(simTrackIndex);
 
+/*    std::cout << "particle position: " << particle->position().X() << ", " << particle->position().Y() << " [R="<< sqrt(particle->position().X()*particle->position().X()+particle->position().Y()*particle->position().Y()) << "], " << particle->position().Z() << ", " << (particle->position().T())
+          << "; momentum: " << particle->momentum().Px() << ", " << particle->momentum().Py() << ", " << particle->momentum().Pz() << ", " << particle->momentum().e()
+          << std::endl;
+*/
     // and return
     return particle;
 }

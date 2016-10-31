@@ -51,7 +51,7 @@ namespace fastsim
 	void interact(Particle & particle,const Layer & layer,std::vector<std::unique_ptr<Particle> > & secondaries,const RandomEngineAndDistribution & random) override;
 	virtual void registerProducts(edm::ProducerBase & producer) const override;
 	virtual void storeProducts(edm::Event & iEvent) override;
-	PSimHit* createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector);
+	std::pair<double, PSimHit*> createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector, GlobalPoint & refPos);
     private:
 	const float onSurfaceTolerance_;
 	std::unique_ptr<edm::PSimHitContainer> simHitContainer_;
@@ -107,11 +107,21 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
     InsideBoundsMeasurementEstimator est;
     std::vector<DetWithState> compatibleDetectors = layer.getDetLayer()->compatibleDets(trajectory, propagator, est);
 
-    // Stores simHits so they can be sorted afterwards
-    std::map<double, PSimHit*> distAndHit;
-    GlobalPoint positionOutside(particle.position().X()-particle.momentum().Px()/sqrt(particle.momentum().Vect().Mag2())*10.,
-        particle.position().Y()-particle.momentum().Py()/sqrt(particle.momentum().Vect().Mag2())*10.,
-        particle.position().Z()-particle.momentum().Pz()/sqrt(particle.momentum().Vect().Mag2())*10.);
+    ////////
+    // You have to sort the simHits in the order they occur!
+    ////////
+
+    // The old algorithm (sorting by distance to IP) doesn't seem to make sense to me (what if particle moves inwards??)
+
+    // Detector layers have to be sorted by proximity to particle.position
+    // Doesn't always work! Particle could be already have been propagated in between the layers!
+    // Proximity to previous hit also doesn't work since simHits only store the localPosition
+    // Propagate particle backwards a bit to make sure it's outside any components (straight line should work well enough) 
+    std::map<double, PSimHit*> distAndHits;
+    // Position relative to which the hits should be sorted
+    GlobalPoint positionOutside(particle.position().x()-particle.momentum().x()/particle.momentum().mag()*10.,
+                                particle.position().y()-particle.momentum().y()/particle.momentum().mag()*10.,
+                                particle.position().z()-particle.momentum().z()/particle.momentum().mag()*10.);
     //
     // loop over the compatible detectors
     //
@@ -122,10 +132,9 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
     	// if the detector has no components
     	if(detector.isLeaf())
     	{
-    	    PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector);
-    	    if(simHit){
-    		  	GlobalPoint hitPos(detector.surface().toGlobal(simHit->localPosition()));
-    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((hitPos-positionOutside).mag2(), simHit));
+    	    std::pair<double, PSimHit*> hitPair = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),detector,positionOutside);
+    	    if(hitPair.second){
+    		  	distAndHits.insert(distAndHits.end(), hitPair);
     		  }
     	}
     	else
@@ -133,59 +142,23 @@ void fastsim::TrackerSimHitProducer::interact(Particle & particle,const Layer & 
     	    // if the detector has components
     	    for(const auto component : detector.components())
     	    {
-    		  PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);    		  
-    		  if(simHit){
-    		  	GlobalPoint hitPos(component->surface().toGlobal(simHit->localPosition()));
-    		  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((hitPos-positionOutside).mag2(), simHit));
+    		  std::pair<double, PSimHit*> hitPair = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component,positionOutside);    		  
+    		  if(hitPair.second){
+    		  	distAndHits.insert(distAndHits.end(), hitPair);
     		  }
     	    }
     	}
     }
 
-    // You have to sort the simHits in the order they occur!
-
-	// The old algorithm (sorting by distance to IP) doesn't seem to make sense to me (what if particle moves inwards??)
-
-	// Detector layers have to be sorted by proximity to particle.position
-	// Doesn't always work! Particle could be already have been propagated in between the layers!
-	// Proximity to previous hit also doesn't work since simHits only store the localPosition
-	// FIX (at least for now): propagate particle backwards a bit to make sure it's outside any components (straight line should work well enough)
-	// I'd like to try old algorithm for the sake of it... However, I'd need a reference to the IP (simTrack vertex) for that :/
-	/*GlobalPoint positionOutside(particle.position().X()-particle.momentum().Px()/sqrt(particle.momentum().Vect().Mag2()),
-		particle.position().Y()-particle.momentum().Py()/sqrt(particle.momentum().Vect().Mag2()),
-		particle.position().Z()-particle.momentum().Pz()/sqrt(particle.momentum().Vect().Mag2()));
-	std::map<double, PSimHit*> distAndHit;
-    for(const auto component : detector.components())
-    {
-	  PSimHit* simHit = createHitOnDetector(particleState,particle.pdgId(),particle.simTrackIndex(),*component);    		  
-	  if(simHit){
-	  	GlobalPoint hitPos(component->surface().toGlobal(simHit->localPosition()));
-	  	distAndHit.insert(distAndHit.end(), std::pair<double,PSimHit*>((positionOutside-hitPos).mag2(), simHit));
-	  }
-    }
-*/    
-    for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
+    // Fill simHitContainer
+    for(std::map<double, PSimHit*>::const_iterator it = distAndHits.begin(); it != distAndHits.end(); it++){
     	simHitContainer_->push_back(*(it->second));
     }
     
-/*
-    // Try simplest approch. Use (0,0,0) as IP, and check if particle moves inwards
-    // What if particle moves inwards in z direction??
-    // particle moves outwards
-	if(particle.momentum().X()*particle.position().X() + particle.momentum().Y()*particle.position().Y() > 0)
-	    for(std::map<double, PSimHit*>::const_iterator it = distAndHit.begin(); it != distAndHit.end(); it++){
-	    	simHitContainer_->push_back(*(it->second));
-	    }
-	//particle moves inwards
-	else
-	    for(std::map<double, PSimHit*>::reverse_iterator rit = distAndHit.rbegin(); rit != distAndHit.rend(); rit++){
-	    	simHitContainer_->push_back(*(rit->second));
-	    }
-*/	
-    
 }
 
-PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle,int pdgId,int simTrackId,const GeomDet & detector)
+// Also returns distance to simHit since hits have to be ordered (in time) afterwards. Necessary to do explicit copy of TrajectoryStateOnSurface particle (not call by reference)
+std::pair<double, PSimHit*> fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectoryStateOnSurface & particle, int pdgId, int simTrackId, const GeomDet & detector, GlobalPoint & refPos)
 {
     //
     // determine position and momentum of particle in the coordinate system of the detector
@@ -195,30 +168,30 @@ PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectorySta
     // if the particle is close enough, no further propagation is needed
     if ( fabs( detector.toLocal(particle.globalPosition()).z()) < onSurfaceTolerance_) 
     {
-	localPosition = particle.localPosition();
-	localMomentum = particle.localMomentum();
+	   localPosition = particle.localPosition();
+	   localMomentum = particle.localMomentum();
     }
     // else, propagate 
     else 
     {
-	// find crossing of particle with 
-	HelixArbitraryPlaneCrossing crossing( particle.globalPosition().basicVector(),
-					      particle.globalMomentum().basicVector(),
-					      particle.transverseCurvature(),
-					      anyDirection);
-	std::pair<bool,double> path = crossing.pathLength(detector.surface());
-	// case propagation succeeds
-	if (path.first) 	
-	{
-	    localPosition = detector.toLocal( GlobalPoint( crossing.position(path.second)));
-	    localMomentum = detector.toLocal( GlobalVector( crossing.direction(path.second)));
-	    localMomentum = localMomentum.unit() * particle.localMomentum().mag();
-	}
-	// case propagation fails
-	else
-	{
-	    return 0;
-	}
+    	// find crossing of particle with 
+    	HelixArbitraryPlaneCrossing crossing(particle.globalPosition().basicVector(),
+    					      particle.globalMomentum().basicVector(),
+    					      particle.transverseCurvature(),
+    					      anyDirection);
+    	std::pair<bool,double> path = crossing.pathLength(detector.surface());
+    	// case propagation succeeds
+    	if (path.first) 	
+    	{
+    	    localPosition = detector.toLocal( GlobalPoint( crossing.position(path.second)));
+    	    localMomentum = detector.toLocal( GlobalVector( crossing.direction(path.second)));
+    	    localMomentum = localMomentum.unit() * particle.localMomentum().mag();
+    	}
+    	// case propagation fails
+    	else
+    	{
+    	    return std::pair<double, PSimHit*>(0, 0);
+    	}
     }
 
     // 
@@ -243,7 +216,7 @@ PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectorySta
     if(fabs(localPosition.x()) > boundX  || fabs(localPosition.y()) > boundY )
     {
        //std::cout<<"Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= out of boundary"<<std::endl;
-	   return 0;
+	   return std::pair<double, PSimHit*>(0, 0);
     }
 /*
         std::cout << "Hit position (id: " << detector.geographicalId().rawId() << "; " << simTrackId << ")= " 
@@ -256,10 +229,14 @@ PSimHit* fastsim::TrackerSimHitProducer::createHitOnDetector(const TrajectorySta
     // create the hit
     //
     double energyDeposit = 0.; // do something about the energy deposit
-        return new PSimHit(entry, exit, localMomentum.mag(), tof, energyDeposit, pdgId,
-				   detector.geographicalId().rawId(),simTrackId,
-				   localMomentum.theta(),
-				   localMomentum.phi());
+
+    GlobalPoint hitPos(detector.surface().toGlobal(localPosition));
+
+    return std::pair<double, PSimHit*>((hitPos-refPos).mag(),
+                                        new PSimHit(entry, exit, localMomentum.mag(), tof, energyDeposit, pdgId,
+                                				   detector.geographicalId().rawId(),simTrackId,
+                                				   localMomentum.theta(),
+                                				   localMomentum.phi()));
 }
 
 DEFINE_EDM_PLUGIN(

@@ -206,13 +206,6 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     std::vector<const fastsim::Layer*> layers;
     if(nextBarrelLayer_) 
     {
-    	// Numerical safety: there always has to be a crossing with the next layer.
-    	//However, due to numerical instabilities it can be that a if two layers are really close the particle already is 'on the surface' of the next layer
-    	if(trajectory->nextCrossingTimeC(*nextBarrelLayer_) < 0){
-    		// Move particle to the layer -> Don't do any propagation
-    		LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *nextBarrelLayer_;
-    		return nextBarrelLayer_;
-    	}
 		layers.push_back(nextBarrelLayer_);
     }
     if(previousBarrelLayer_)
@@ -223,12 +216,6 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
     {
 		if(nextForwardLayer_)
 		{
-			// Numerical safety: there always has to be a crossing with the next layer.
-			if(trajectory->nextCrossingTimeC(*nextForwardLayer_) < 0){
-	    		// Move particle to the layer -> Don't do any propagation
-	    		LogDebug(MESSAGECATEGORY) << "    moved particle to layer: " << *nextForwardLayer_;
-	    		return nextForwardLayer_;
-    		}
 		    layers.push_back(nextForwardLayer_);
 		}
     }
@@ -240,8 +227,6 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 		}
     }
     
-
-    // TODO : review time unit: ct or just t?
     double deltaTime = -1;
     for(auto _layer : layers)
     {
@@ -254,8 +239,8 @@ bool fastsim::LayerNavigator::moveParticleToNextLayer(fastsim::Particle & partic
 		}
     }
 
+    // TODO : review time unit: ct or just t?
     double properDeltaTime = deltaTime / particle.gamma();
-
     if(!particle.isStable() && properDeltaTime > particle.remainingProperLifeTime())
     {
 		deltaTime = particle.remainingProperLifeTime() * particle.gamma();
