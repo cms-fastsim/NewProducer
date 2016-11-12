@@ -17,8 +17,17 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // in cmssw units: r = p_T / (c * 10^-4 * q * B)
     , radius_(std::abs(momentum_.Pt() / (speedOfLight_ * 1e-4 * particle.charge() * magneticFieldZ)))
     , phi_(std::atan(momentum_.Py()/momentum_.Px()) + (momentum_.Px()*particle.charge() < 0 ? 3.*M_PI/2. : M_PI/2. ))
-    , centerX_(position_.X() - radius_*std::cos(phi_))
-    , centerY_(position_.Y() - radius_*std::sin(phi_))
+    // maybe consider (for -pi/2<x<pi/2)
+    // cos(atan(x)) = 1 / sqrt(x^2+1)
+    // -> cos(atan(x) + pi/2)  = - x / sqrt(x^2+1)
+    // -> cos(atan(x) +3*pi/2) = + x / sqrt(x^2+1)
+    // sin(atan(x)) = x / sqrt(x^2+1)
+    // -> sin(atan(x) + pi/2)  = + 1 / sqrt(x^2+1)
+    // -> sin(atan(x) +3*pi/2) = - 1 / sqrt(x^2+1)
+    , centerX_(position_.X() - radius_ * (momentum_.Py()/momentum_.Px()) / std::sqrt((momentum_.Py()/momentum_.Px())*(momentum_.Py()/momentum_.Px())+1) * (momentum_.Px()*particle.charge() < 0 ? 1. : -1.))
+    , centerY_(position_.Y() - radius_ * 1 								 / std::sqrt((momentum_.Py()/momentum_.Px())*(momentum_.Py()/momentum_.Px())+1) * (momentum_.Px()*particle.charge() < 0 ? -1. : 1.))
+    //, centerX_(position_.X() - radius_*std::cos(phi_))
+    //, centerY_(position_.Y() - radius_*std::sin(phi_))
     , centerR_(std::sqrt(centerX_*centerX_ + centerY_*centerY_))
     , minR_(centerR_ - radius_)
     , maxR_(centerR_ + radius_)
@@ -27,9 +36,10 @@ fastsim::HelixTrajectory::HelixTrajectory(const fastsim::Particle & particle,dou
     // energy in units of GeV: omega = q * B * c^2 / (E * 10^9)
     // in cmssw units: omega[1/ns] = q * B * c^2 * 10^-4 / E
     , phiSpeed_(-particle.charge() * magneticFieldZ * speedOfLight_ * speedOfLight_ * 1e-4 / momentum_.E())
-{//std::cout<<"Radius: "<<radius_<<std::endl;
- //std::cout<<"Center: "<<centerX_<<"; "<<centerY_<<std::endl;
- //std::cout<<"Phi0: "<<phi_<<std::endl;
+{std::cout<<"Radius: "<<radius_<<std::endl;
+ std::cout<<"Center: "<<centerX_<<"; "<<centerY_<<std::endl;
+ std::cout<<"Phi0: "<<phi_*1000.<<std::endl;
+ std::cout<<"PhiSpeed: "<<phiSpeed_*1000.<<std::endl;
 }
 
 bool fastsim::HelixTrajectory::crosses(const BarrelLayer & layer) const
@@ -76,7 +86,10 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
     // c = E^2 - G^2
     //
 
-    if(radius_ < 50000){
+    // TODO: Investigate if this boundary produces valid results in all cases!
+    // Taylor expansion: faster + more stable (numerically)
+    // Full helix: Valid even for geometrically "strange" properties of particle
+    if(radius_ < 5000){
         double E = centerX_*centerX_ + centerY_*centerY_ + radius_*radius_ - layer.getRadius()*layer.getRadius();
         double F = 2*centerY_*radius_;
         double G = 2*centerX_*radius_;
@@ -97,6 +110,8 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
         double sqrtDelta = sqrt(delta);
         double phi1 = std::asin((-b - sqrtDelta) / (2.*a));
         double phi2 = std::asin((-b + sqrtDelta) / (2.*a));
+
+        //std::cout<<phi1<<";"<<phi2<<std::endl;
         // asin is ambiguous, make sure to have the right solution
         if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
             phi1 = - phi1 + M_PI;
@@ -106,6 +121,10 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
             phi2 = - phi2 + M_PI;
             //std::cout<<"-> fixing phi2"<<std::endl;
         }
+        //std::cout<<std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1))))<<std::endl;
+        //std::cout<<std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2))))<<std::endl;
+        //std::cout<<phi1<<";"<<phi2<<std::endl;
+
 
         if(phi1 < 0){
             phi1 += 2. * M_PI;
@@ -113,6 +132,9 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
         if(phi2 < 0){
             phi2 += 2. * M_PI;
         }
+        //std::cout<<std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1))))<<std::endl;
+        //std::cout<<std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi2))*(centerX_ + radius_*std::cos(phi2)) + (centerY_ + radius_*std::sin(phi2))*(centerY_ + radius_*std::sin(phi2))))<<std::endl;
+        //std::cout<<phi1<<";"<<phi2<<std::endl;
 
         if(std::abs(layer.getRadius() - sqrt((centerX_ + radius_*std::cos(phi1))*(centerX_ + radius_*std::cos(phi1)) + (centerY_ + radius_*std::sin(phi1))*(centerY_ + radius_*std::sin(phi1)))) > 1e-3){
             throw cms::Exception("fastsim::HelixTrajectory::nextCrossingTimeC") << "not able to calculate phi1 of intersection";
@@ -180,7 +202,6 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
         double delPhi2 = std::asin((-b + sqrtDelta) / (2.*a));
 
         // Only one solution should be valid in most cases (Tayler expension only for small delPhi)
-        // If particle already on layer return -1 (unless second solution also very small):
         double delPhi;
         bool twoSolutions = false;
         if(phiSpeed_ > 0){
@@ -199,6 +220,8 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
             else delPhi = delPhi2;
         }
 
+        // If particle already on layer return -1 (unless second solution also very small):
+        // TEST: Might have to set std::abs(delPhi2) < 1e-2 to a higher value, e.g. 1e-1?
         if(std::abs(delPhi)*radius_ < 1e-3){
             if(twoSolutions){
                 if(delPhi == delPhi1 && std::abs(delPhi2) < 1e-2) return delPhi2 / phiSpeed_ * speedOfLight_;
