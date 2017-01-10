@@ -67,7 +67,7 @@ process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService
     mixSimCaloHits = cms.PSet(process.RandomNumberGeneratorService.mixSimCaloHits),
     mixRecoTracks = cms.PSet(process.RandomNumberGeneratorService.mixRecoTracks),
     famosSimHits = cms.PSet(process.RandomNumberGeneratorService.famosSimHits),
-    siTrackerGaussianSmearingRecHits = cms.PSet(process.RandomNumberGeneratorService.siTrackerGaussianSmearingRecHits),
+    fastTrackerRecHits = cms.PSet(process.RandomNumberGeneratorService.fastTrackerRecHits),
     ecalRecHit = cms.PSet(process.RandomNumberGeneratorService.ecalRecHit),
     ecalPreshowerRecHit = cms.PSet(process.RandomNumberGeneratorService.ecalPreshowerRecHit),
     hbhereco = cms.PSet(process.RandomNumberGeneratorService.hbhereco),
@@ -98,7 +98,7 @@ process.load('Configuration.StandardSequences.Validation_cff')
 
 
 # use new TrackerSimHitProducer
-process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.simMuonCSCDigis.InputCollection = cms.string("fastSimProducerMuonCSCHits")

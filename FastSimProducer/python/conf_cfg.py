@@ -33,7 +33,7 @@ process.RandomNumberGeneratorService = cms.Service(
         initialSeed = cms.untracked.uint32(234567),
         engineName = cms.untracked.string('TRandom3')
         ),
-    siTrackerGaussianSmearingRecHits = cms.PSet(
+    fastTrackerRecHits = cms.PSet(
          initialSeed = cms.untracked.uint32(24680),
          engineName = cms.untracked.string('TRandom3')
      ),
@@ -77,7 +77,7 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
 )
 
 # use new TrackerSimHitProducer
-process.siTrackerGaussianSmearingRecHits.InputSimHits = cms.InputTag("fastSimProducer","TrackerHits")
+process.fastTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHits.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 process.fastMatchedTrackerRecHitCombinations.simHits = cms.InputTag("fastSimProducer","TrackerHits")
 
