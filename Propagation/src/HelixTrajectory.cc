@@ -111,6 +111,9 @@ double fastsim::HelixTrajectory::nextCrossingTimeC(const BarrelLayer & layer) co
             return -1.;
         }
 
+        // TODO: Improve and use a numerically more stable procedure: easy implementation! Can also be done below for taylor expansion
+        // https://people.csail.mit.edu/bkph/articles/Quadratics.pdf
+
         double sqrtDelta = sqrt(delta);
         double phi1 = std::asin((-b - sqrtDelta) / (2.*a));
         double phi2 = std::asin((-b + sqrtDelta) / (2.*a));
